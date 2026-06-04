@@ -319,6 +319,7 @@ final class GlobalHotKeyManager {
 
 final class HotKeyRecorderField: NSTextField {
     var onRecord: ((HotKey) -> Void)?
+    private var keyMonitor: Any?
 
     override var acceptsFirstResponder: Bool { true }
     override var needsPanelToBecomeKey: Bool { true }
@@ -332,6 +333,7 @@ final class HotKeyRecorderField: NSTextField {
         if didBecome {
             layer?.borderWidth = 1
             layer?.borderColor = NSColor.controlAccentColor.cgColor
+            installKeyMonitor()
         }
         return didBecome
     }
@@ -341,8 +343,13 @@ final class HotKeyRecorderField: NSTextField {
         if didResign {
             layer?.borderWidth = 0
             layer?.borderColor = nil
+            removeKeyMonitor()
         }
         return didResign
+    }
+
+    deinit {
+        removeKeyMonitor()
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -351,6 +358,21 @@ final class HotKeyRecorderField: NSTextField {
 
     override func keyDown(with event: NSEvent) {
         _ = record(event)
+    }
+
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.window?.firstResponder === self else { return event }
+            return self.record(event) ? nil : event
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
     }
 
     private func record(_ event: NSEvent) -> Bool {
