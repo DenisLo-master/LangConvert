@@ -13,7 +13,6 @@ build/*
 !build/
 !build/.gitkeep
 !build/LangConvert.pkg
-!build/LangConvert.pkg.sha256
 dist
 release
 dist-ssr

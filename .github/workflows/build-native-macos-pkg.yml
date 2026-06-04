@@ -64,6 +64,7 @@ jobs:
         run: |
           pkgutil --payload-files build/LangConvert.pkg | tee "$RUNNER_TEMP/pkg-payload-files.txt"
           grep -E '(^|/)Applications/LangConvert\.app/Contents/Resources/AppIcon\.icns$' "$RUNNER_TEMP/pkg-payload-files.txt"
+          grep -E '(^|/)Applications/LangConvert\.app/Contents/Resources/BuildCommit\.txt$' "$RUNNER_TEMP/pkg-payload-files.txt"
           grep -E '(^|/)Applications/LangConvert\.app/Contents/Info\.plist$' "$RUNNER_TEMP/pkg-payload-files.txt"
 
       - name: Upload PKG artifact
@@ -78,12 +79,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          shasum -a 256 build/LangConvert.pkg | tee build/LangConvert.pkg.sha256
-          git add -f build/LangConvert.pkg build/LangConvert.pkg.sha256
+          shasum -a 256 build/LangConvert.pkg
+          git add -f build/LangConvert.pkg
           git status --short
           if git diff --cached --quiet; then
-            git commit --allow-empty -m "Add built macOS pkg [skip pkg commit]"
+            echo "No PKG changes to commit."
           else
             git commit -m "Add built macOS pkg [skip pkg commit]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
-          git push origin "HEAD:${GITHUB_REF_NAME}"
