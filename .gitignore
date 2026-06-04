@@ -9,7 +9,10 @@ lerna-debug.log*
 
 node_modules
 .build
-build
+build/*
+!build/
+!build/.gitkeep
+!build/LangConvert.pkg
 dist
 release
 dist-ssr
