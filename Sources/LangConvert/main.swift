@@ -96,11 +96,23 @@ final class LayoutConverter {
     }
 }
 
+enum AccessibilityPermission {
+    static var isTrusted: Bool {
+        AXIsProcessTrusted()
+    }
+
+    @discardableResult
+    static func requestPrompt() -> Bool {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        return AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+    }
+}
+
 final class KeyboardAutomation {
     private let converter = LayoutConverter()
 
     func convertSelection() -> String {
-        guard requestAccessibilityIfNeeded() else {
+        guard AccessibilityPermission.requestPrompt() else {
             return "Разрешите Accessibility доступ для LangConvert."
         }
 
@@ -126,17 +138,12 @@ final class KeyboardAutomation {
     }
 
     func switchLocale() -> String {
-        guard requestAccessibilityIfNeeded() else {
+        guard AccessibilityPermission.requestPrompt() else {
             return "Разрешите Accessibility доступ для LangConvert."
         }
 
         postKey(keyCode: 49, flags: .maskControl)
         return "Запрошено переключение локали."
-    }
-
-    private func requestAccessibilityIfNeeded() -> Bool {
-        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        return AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
     private func postKey(keyCode: CGKeyCode, flags: CGEventFlags) {
@@ -314,10 +321,41 @@ final class HotKeyRecorderField: NSTextField {
     var onRecord: ((HotKey) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
+    override var needsPanelToBecomeKey: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let didBecome = super.becomeFirstResponder()
+        if didBecome {
+            layer?.borderWidth = 1
+            layer?.borderColor = NSColor.controlAccentColor.cgColor
+        }
+        return didBecome
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let didResign = super.resignFirstResponder()
+        if didResign {
+            layer?.borderWidth = 0
+            layer?.borderColor = nil
+        }
+        return didResign
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        record(event)
+    }
 
     override func keyDown(with event: NSEvent) {
+        _ = record(event)
+    }
+
+    private func record(_ event: NSEvent) -> Bool {
         let modifiers = carbonModifiers(from: event.modifierFlags)
-        guard modifiers != 0 else { return }
+        guard modifiers != 0 else { return false }
 
         let hotKey = HotKey(
             keyCode: UInt32(event.keyCode),
@@ -326,6 +364,7 @@ final class HotKeyRecorderField: NSTextField {
         )
         stringValue = hotKey.display
         onRecord?(hotKey)
+        return true
     }
 
     private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
@@ -358,6 +397,9 @@ final class SettingsWindowController: NSWindowController {
     private let loginItems: LoginItemManager
     private let onChange: () -> Void
     private let statusLabel = NSTextField(labelWithString: "")
+    private let accessibilityNotice = NSStackView()
+    private let accessibilityMessage = NSTextField(labelWithString: "")
+    private let accessibilityButton = NSButton(title: "Разрешить доступ", target: nil, action: nil)
 
     init(store: SettingsStore, loginItems: LoginItemManager, onChange: @escaping () -> Void) {
         self.store = store
@@ -382,6 +424,7 @@ final class SettingsWindowController: NSWindowController {
 
     func setStatus(_ text: String) {
         statusLabel.stringValue = text
+        refreshAccessibilityNotice()
     }
 
     private func buildUI() {
@@ -420,11 +463,14 @@ final class SettingsWindowController: NSWindowController {
         launchCheckbox.target = self
         launchCheckbox.action = #selector(toggleLaunchAtLogin(_:))
 
+        configureAccessibilityNotice()
+
         statusLabel.stringValue = "Для конвертации выделенного текста разрешите Accessibility доступ."
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.maximumNumberOfLines = 2
 
         stack.addArrangedSubview(title)
+        stack.addArrangedSubview(accessibilityNotice)
         stack.addArrangedSubview(labeled("Конвертация выделенного текста", field: convertField))
         stack.addArrangedSubview(labeled("Переключение локали", field: switchField))
         stack.addArrangedSubview(launchCheckbox)
@@ -436,6 +482,47 @@ final class SettingsWindowController: NSWindowController {
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
             stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 24)
         ])
+        refreshAccessibilityNotice()
+    }
+
+    override func showWindow(_ sender: Any?) {
+        refreshAccessibilityNotice()
+        super.showWindow(sender)
+    }
+
+    private func configureAccessibilityNotice() {
+        accessibilityNotice.orientation = .horizontal
+        accessibilityNotice.alignment = .centerY
+        accessibilityNotice.spacing = 12
+        accessibilityNotice.edgeInsets = NSEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+        accessibilityNotice.wantsLayer = true
+        accessibilityNotice.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        accessibilityNotice.layer?.cornerRadius = 8
+
+        accessibilityMessage.stringValue = "Для первого запуска разрешите Accessibility доступ, иначе горячие клавиши не смогут заменить выделенный текст."
+        accessibilityMessage.lineBreakMode = .byWordWrapping
+        accessibilityMessage.maximumNumberOfLines = 3
+
+        accessibilityButton.target = self
+        accessibilityButton.action = #selector(requestAccessibilityPermission)
+
+        accessibilityNotice.addArrangedSubview(accessibilityMessage)
+        accessibilityNotice.addArrangedSubview(accessibilityButton)
+        accessibilityMessage.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        accessibilityButton.setContentHuggingPriority(.required, for: .horizontal)
+        accessibilityNotice.widthAnchor.constraint(equalToConstant: 472).isActive = true
+    }
+
+    private func refreshAccessibilityNotice() {
+        accessibilityNotice.isHidden = AccessibilityPermission.isTrusted
+    }
+
+    @objc private func requestAccessibilityPermission() {
+        if AccessibilityPermission.requestPrompt() {
+            setStatus("Accessibility доступ уже выдан.")
+        } else {
+            setStatus("Выдайте LangConvert Accessibility доступ в системных настройках.")
+        }
     }
 
     @objc private func toggleLaunchAtLogin(_ sender: NSButton) {
@@ -450,9 +537,12 @@ final class SettingsWindowController: NSWindowController {
 
     private func makeHotKeyField(value: String) -> HotKeyRecorderField {
         let field = HotKeyRecorderField(string: value)
-        field.isEditable = true
+        field.isEditable = false
         field.isSelectable = false
         field.focusRingType = .default
+        field.isBezeled = true
+        field.drawsBackground = true
+        field.wantsLayer = true
         field.translatesAutoresizingMaskIntoConstraints = false
         field.widthAnchor.constraint(equalToConstant: 240).isActive = true
         return field
@@ -491,8 +581,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(menuItem("Settings", action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(menuItem("Convert selected text", action: #selector(convertSelection), keyEquivalent: ""))
-        menu.addItem(menuItem("Switch locale", action: #selector(switchLocale), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(menuItem("Quit", action: #selector(quit), keyEquivalent: "q"))
         item.menu = menu

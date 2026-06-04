@@ -162,3 +162,164 @@ Verdict:
 - Native rewrite addresses the large Electron package size root cause.
 - Product behavior remains aligned with the original important scope.
 - Residual release risk is macOS permission/runtime behavior, which requires a real macOS smoke pass.
+
+## Follow-up: settings and menu polish
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Не показывать команды конвертации и смены локали в status-bar menu.
+- Исправить переназначение hotkey в Settings при клике в input field.
+- Если при первом запуске нужно запросить Accessibility permission, показать в Settings уведомление с кнопкой запроса.
+
+Acceptance criteria:
+
+- В status-bar menu остаются настройки и выход, без ручных команд convert/switch locale.
+- Hotkey field после клика принимает сочетание клавиш, обновляет текст и сохраняет настройку.
+- Settings показывает заметный Accessibility notice, когда permission не выдан, и кнопка запускает системный prompt.
+
+### Phase 2 - Settings and menu polish
+
+Status: `completed`
+
+Goal: точечно улучшить UX настроек и status-bar menu без изменения core conversion flow.
+
+Files/modules:
+
+- `Sources/LangConvert/main.swift`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Убрать menu items `Convert selected text` и `Switch locale`.
+- Перевести hotkey field из editable text input в focusable recorder control, чтобы клик передавал key events самому полю.
+- Добавить shared Accessibility permission helper и notice/button в Settings.
+
+Concrete checks:
+
+- `git diff --check` - pass.
+- `swift build` - not run in this Linux container because `swift` is unavailable.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| status menu | open menu bar item | static source review; macOS smoke recommended | pass | source diff | qa | pass |
+| hotkey recorder | click field and press shortcut | macOS smoke required | pass | manual macOS QA checklist | qa | pending-macos |
+| accessibility notice | open Settings without permission | macOS smoke required | pass | manual macOS QA checklist | qa | pending-macos |
+
+## Follow-up: application list icon
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Иконка LangConvert в списке приложений должна быть клавиатурой.
+- Визуальный стиль: белый outline на черном фоне.
+- Сделать качественный high-resolution raster icon в стиле примера `DenisLo-master/Dictation`, не ломая native packaging.
+
+Acceptance criteria:
+
+- `.app` bundle содержит app icon resource.
+- `Info.plist` указывает `CFBundleIconFile`.
+- Packaging script кладет icon в `Contents/Resources`.
+- Icon source `AppIconSource.png` доступен в репозитории, `.icns` может быть пересобран без сторонних npm/pnpm-зависимостей.
+
+### Phase 3 - App icon asset
+
+Status: `completed`
+
+Goal: добавить красивую app icon клавиатуры для Finder/Applications/LaunchServices.
+
+Files/modules:
+
+- `packaging/AppIconSource.png`
+- `packaging/AppIcon.icns`
+- `packaging/AppIconSource.LICENSE`
+- `packaging/Info.plist`
+- `scripts/generate-app-icon.py`
+- `scripts/package-macos.sh`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Использовать MIT-лицензированный `Dictation` app icon source как polished macOS-style reference/base и заменить центральный символ на клавиатуру LangConvert.
+- Сгенерировать PNG-based `.icns` sizes 16...1024 из 1024px `AppIconSource.png`.
+- Подключить `CFBundleIconFile` и копирование asset в Resources.
+
+Concrete checks:
+
+- `python3 scripts/generate-app-icon.py` - pass.
+- `python3` smoke для структуры `.icns` - pass.
+- `python3` parse `Info.plist` and confirm `CFBundleIconFile=AppIcon` - pass.
+- `bash -n scripts/package-macos.sh` - pass.
+- `git diff --check` - pass.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| app icon asset | open Applications/Finder | static asset and plist review; macOS smoke recommended | pass | source diff and generated icns | qa | pass |
+| packaging | build pkg | script syntax and macOS CI smoke | pass | packaging script diff | qa | pass |
+
+## Follow-up: reinstall replacement and icon refresh
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Если приложение уже установлено, новая установка должна полностью заменить старую копию в `/Applications`.
+- Иконка в списке приложений должна обновляться вместе с новой версией, без сохранения старого cached icon.
+- Собрать билд и запушить изменения.
+
+Acceptance criteria:
+
+- Preinstall завершает запущенный `LangConvert`, unregister старую `.app` из LaunchServices и удаляет старые копии из `/Applications`.
+- Новый bundle содержит `Contents/Resources/AppIcon.icns` и `CFBundleIconFile=AppIcon`.
+- App/package version bump снижает риск сохранения старого metadata/icon cache.
+- Postinstall регистрирует новый bundle, обновляет timestamp metadata, сбрасывает QuickLook/icon cache и просит Finder обновить `/Applications/LangConvert.app`.
+
+### Phase 4 - Reinstall replacement hardening
+
+Status: `completed`
+
+Goal: усилить installer replacement flow, чтобы новая установка заменяла приложение и иконку в Applications.
+
+Files/modules:
+
+- `packaging/Info.plist`
+- `scripts/package-macos.sh`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Bump `CFBundleShortVersionString` до `0.1.1`, `CFBundleVersion` до `2`, package version до `0.1.1`.
+- В preinstall выполнить LaunchServices unregister старого `/Applications/LangConvert.app` до удаления.
+- В postinstall touch bundle metadata/icon, register новый app, сбросить QuickLook cache и user IconServices store, затем обновить Finder item.
+
+Concrete checks:
+
+- `python3` parse `Info.plist` and confirm version/icon metadata - pass.
+- `bash -n scripts/package-macos.sh` - pass.
+- `git diff --check` - pass.
+- macOS package build/reinstall smoke - pending CI/macOS runner.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| reinstall replacement | install pkg over existing app | macOS installer smoke recommended | pass | package script diff and CI build | qa | pending-macos |
+| icon refresh | open `/Applications` after reinstall | macOS Finder/LaunchServices smoke recommended | pass | source diff and CI build | qa | pending-macos |
