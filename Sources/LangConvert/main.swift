@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Carbon
+import Carbon.HIToolbox
 import Darwin
 import Foundation
 
@@ -97,7 +98,7 @@ final class LayoutConverter {
             return String(text.map { systemMap[$0] ?? $0 })
         }
 
-        String(text.map { character in
+        return String(text.map { character in
             enToRu[character] ?? ruToEn[character] ?? character
         })
     }
@@ -150,8 +151,8 @@ enum KeyboardLayoutProvider {
 
     private static func enabledKeyboardSources() -> [LayoutSource] {
         let properties: [String: Any] = [
-            kTISPropertyInputSourceCategory.takeUnretainedValue() as String: kTISCategoryKeyboardInputSource.takeUnretainedValue() as String,
-            kTISPropertyInputSourceIsEnabled.takeUnretainedValue() as String: true
+            kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as String,
+            kTISPropertyInputSourceIsEnabled as String: true
         ]
         guard let sources = TISCopyInputSourceList(properties as CFDictionary, false)?.takeRetainedValue() as? [TISInputSource] else {
             return []
@@ -218,7 +219,7 @@ enum KeyboardLayoutProvider {
         modifiers: UInt32
     ) -> Character? {
         var deadKeyState: UInt32 = 0
-        var length = UniCharCount(0)
+        var length: UInt32 = 0
         var chars = [UniChar](repeating: 0, count: 8)
         let status = chars.withUnsafeMutableBufferPointer { buffer in
             UCKeyTranslate(
@@ -229,13 +230,13 @@ enum KeyboardLayoutProvider {
                 keyboardType,
                 UInt32(kUCKeyTranslateNoDeadKeysBit),
                 &deadKeyState,
-                UniCharCount(buffer.count),
+                UInt32(buffer.count),
                 &length,
                 buffer.baseAddress
             )
         }
         guard status == noErr, length == 1 else { return nil }
-        let value = String(utf16CodeUnits: chars, count: length)
+        let value = String(utf16CodeUnits: chars, count: Int(length))
         guard value.count == 1, let character = value.first, !character.isWhitespace else { return nil }
         return character
     }
