@@ -5,9 +5,6 @@ import Carbon.HIToolbox
 import Darwin
 import Foundation
 
-@_silgen_name("TISCopyInputSourceList")
-private func TISCopyInputSourceListBridge(_ properties: CFDictionary?, _ includeAllInstalled: UInt8) -> Unmanaged<CFArray>?
-
 struct HotKey: Codable, Equatable {
     var keyCode: UInt32
     var modifiers: UInt32
@@ -157,7 +154,7 @@ enum KeyboardLayoutProvider {
             kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as String,
             kTISPropertyInputSourceIsEnabled as String: true
         ]
-        guard let sourceArray = TISCopyInputSourceListBridge(properties as CFDictionary, 0)?.takeRetainedValue() as? [TISInputSource] else {
+        guard let sourceArray = TISCreateInputSourceList(properties as CFDictionary, false)?.takeRetainedValue() as? [TISInputSource] else {
             return []
         }
 
