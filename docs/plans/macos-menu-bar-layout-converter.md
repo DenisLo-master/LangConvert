@@ -243,7 +243,6 @@ Goal: добавить красивую app icon клавиатуры для Fin
 Files/modules:
 
 - `packaging/AppIconSource.png`
-- `packaging/AppIcon.icns`
 - `packaging/AppIconSource.LICENSE`
 - `packaging/Info.plist`
 - `scripts/generate-app-icon.py`
@@ -253,13 +252,13 @@ Files/modules:
 Implementation steps:
 
 - Использовать MIT-лицензированный `Dictation` app icon source как polished macOS-style reference/base и заменить центральный символ на клавиатуру LangConvert.
-- Сгенерировать PNG-based `.icns` sizes 16...1024 из 1024px `AppIconSource.png`.
+- Генерировать macOS-native `.icns` из 1024px `AppIconSource.png` через `sips`/`iconutil` во время package build.
 - Подключить `CFBundleIconFile` и копирование asset в Resources.
 
 Concrete checks:
 
 - `python3 scripts/generate-app-icon.py` - pass.
-- `python3` smoke для структуры `.icns` - pass.
+- `iconutil` roundtrip для `.icns` - pass на macOS build.
 - `python3` parse `Info.plist` and confirm `CFBundleIconFile=AppIcon` - pass.
 - `bash -n scripts/package-macos.sh` - pass.
 - `git diff --check` - pass.
@@ -270,6 +269,61 @@ QA / Expert Coverage Matrix:
 | --- | --- | --- | --- | --- | --- | --- |
 | app icon asset | open Applications/Finder | static asset and plist review; macOS smoke recommended | pass | source diff and generated icns | qa | pass |
 | packaging | build pkg | script syntax and macOS CI smoke | pass | packaging script diff | qa | pass |
+
+## Follow-up: macOS-native icon generation
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Проверить именно обновление иконки в Applications, а не только наличие файла.
+- Исправить случай, когда в Applications показывается белая generic icon вместо `AppIconSource.png`.
+
+Acceptance criteria:
+
+- Репозиторий не хранит вручную собранный `.icns`, который macOS может не принять.
+- Package build генерирует `.icns` на macOS через `sips` и `iconutil`.
+- Build падает, если `iconutil` не может обратно разобрать `AppIcon.icns` или если нет `512x512@2x`.
+- CI проверяет, что `.pkg` payload содержит `Applications/LangConvert.app/Contents/Resources/AppIcon.icns` и `Info.plist`.
+
+### Phase 5 - Finder icon validity
+
+Status: `completed`
+
+Goal: заменить ненадежный Python-built `.icns` на macOS-native iconset pipeline.
+
+Files/modules:
+
+- `.github/workflows/build-native-macos-pkg.yml`
+- `.gitignore`
+- `scripts/generate-app-icon.py`
+- `scripts/package-macos.sh`
+- `packaging/AppIconSource.png`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- `scripts/generate-app-icon.py` теперь требует `sips`/`iconutil`, создает полный `.iconset` и собирает `AppIcon.icns`.
+- `scripts/package-macos.sh` генерирует icon перед созданием `.app`, проверяет `iconutil -c iconset` roundtrip и только затем копирует icon в `Contents/Resources`.
+- `packaging/AppIcon.icns` удален из tracked files и добавлен в `.gitignore` как generated artifact.
+- GitHub Actions проверяет payload `.pkg` на наличие app icon и `Info.plist`.
+
+Concrete checks:
+
+- `bash -n scripts/package-macos.sh` - pass.
+- `git diff --check` - pass.
+- macOS GitHub Actions build - pending after push.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| app icon validity | build pkg on macOS | `sips`/`iconutil` generation and roundtrip | pass | CI log | qa | pending-ci |
+| pkg payload | inspect built pkg | `pkgutil --payload-files` contains app icon path | pass | CI log | qa | pending-ci |
 
 ## Follow-up: reinstall replacement and icon refresh
 

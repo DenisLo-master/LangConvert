@@ -18,6 +18,7 @@ APPLE_TEAM_ID="${APPLE_TEAM_ID:-}"
 APPLE_APP_SPECIFIC_PASSWORD="${APPLE_APP_SPECIFIC_PASSWORD:-}"
 
 swift build -c release --package-path "$ROOT_DIR"
+python3 "$ROOT_DIR/scripts/generate-app-icon.py"
 
 rm -rf "$APP_DIR" "$PKG_PATH"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PKG_ROOT/Applications" "$PKG_SCRIPTS"
@@ -25,6 +26,10 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PKG_ROOT/Applications" "$PKG_SCRIPTS"
 cp "$ROOT_DIR/.build/release/LangConvert" "$MACOS_DIR/LangConvert"
 cp "$ROOT_DIR/packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/packaging/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+rm -rf "$BUILD_DIR/AppIcon.verify.iconset"
+iconutil -c iconset "$RESOURCES_DIR/AppIcon.icns" -o "$BUILD_DIR/AppIcon.verify.iconset" >/dev/null
+test -f "$BUILD_DIR/AppIcon.verify.iconset/icon_512x512@2x.png"
+rm -rf "$BUILD_DIR/AppIcon.verify.iconset"
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
 chmod +x "$MACOS_DIR/LangConvert"

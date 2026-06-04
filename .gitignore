@@ -17,6 +17,7 @@ dist
 release
 dist-ssr
 *.local
+packaging/AppIcon.icns
 
 # Local deploy key
 deploy_key
