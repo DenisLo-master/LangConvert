@@ -64,7 +64,6 @@ jobs:
         run: |
           pkgutil --payload-files build/LangConvert.pkg | tee "$RUNNER_TEMP/pkg-payload-files.txt"
           grep -E '(^|/)Applications/LangConvert\.app/Contents/Resources/AppIcon\.icns$' "$RUNNER_TEMP/pkg-payload-files.txt"
-          grep -E '(^|/)Applications/LangConvert\.app/Contents/Resources/BuildCommit\.txt$' "$RUNNER_TEMP/pkg-payload-files.txt"
           grep -E '(^|/)Applications/LangConvert\.app/Contents/Info\.plist$' "$RUNNER_TEMP/pkg-payload-files.txt"
 
       - name: Upload PKG artifact
