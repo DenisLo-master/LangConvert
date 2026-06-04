@@ -298,6 +298,10 @@ final class GlobalHotKeyManager {
         installFlagsChangedMonitorsIfNeeded()
     }
 
+    func suspend() {
+        unregisterAll()
+    }
+
     private func register(id: UInt32, hotKey: HotKey, action: @escaping () -> Void) {
         if hotKey.isModifierOnly {
             modifierOnlyActions[id] = (hotKey, action)
@@ -515,19 +519,26 @@ final class HotKeyRecorderField: NSTextField {
     }
 }
 
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let store: SettingsStore
     private let loginItems: LoginItemManager
     private let onChange: () -> Void
+    private let onEditingActive: (Bool) -> Void
     private let statusLabel = NSTextField(labelWithString: "")
     private let accessibilityNotice = NSStackView()
     private let accessibilityMessage = NSTextField(labelWithString: "")
     private let accessibilityButton = NSButton(title: "Разрешить доступ", target: nil, action: nil)
 
-    init(store: SettingsStore, loginItems: LoginItemManager, onChange: @escaping () -> Void) {
+    init(
+        store: SettingsStore,
+        loginItems: LoginItemManager,
+        onChange: @escaping () -> Void,
+        onEditingActive: @escaping (Bool) -> Void
+    ) {
         self.store = store
         self.loginItems = loginItems
         self.onChange = onChange
+        self.onEditingActive = onEditingActive
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
@@ -538,6 +549,7 @@ final class SettingsWindowController: NSWindowController {
         window.title = "LangConvert Settings"
         window.center()
         super.init(window: window)
+        window.delegate = self
         buildUI()
     }
 
@@ -610,7 +622,20 @@ final class SettingsWindowController: NSWindowController {
 
     override func showWindow(_ sender: Any?) {
         refreshAccessibilityNotice()
+        onEditingActive(true)
         super.showWindow(sender)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        onEditingActive(false)
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        onEditingActive(false)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        onEditingActive(true)
     }
 
     private func configureAccessibilityNotice() {
@@ -727,9 +752,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            settingsWindow = SettingsWindowController(store: store, loginItems: loginItems) { [weak self] in
-                self?.registerHotKeys()
-            }
+            settingsWindow = SettingsWindowController(
+                store: store,
+                loginItems: loginItems,
+                onChange: { [weak self] in
+                    self?.registerHotKeys()
+                },
+                onEditingActive: { [weak self] isActive in
+                    if isActive {
+                        self?.hotKeys.suspend()
+                    } else {
+                        self?.registerHotKeys()
+                    }
+                }
+            )
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.showWindow(nil)
