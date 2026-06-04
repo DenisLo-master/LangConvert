@@ -174,12 +174,12 @@ enum KeyboardLayoutProvider {
 
     private static func property(_ source: TISInputSource, _ key: CFString) -> String? {
         guard let value = TISGetInputSourceProperty(source, key) else { return nil }
-        return Unmanaged<CFString>.fromOpaque(value).takeUnretainedValue() as String
+        return unsafeBitCast(value, to: CFString.self) as String
     }
 
     private static func dataProperty(_ source: TISInputSource, _ key: CFString) -> CFData? {
         guard let value = TISGetInputSourceProperty(source, key) else { return nil }
-        return Unmanaged<CFData>.fromOpaque(value).takeUnretainedValue()
+        return unsafeBitCast(value, to: CFData.self)
     }
 
     private static func characterMap(for source: LayoutSource) -> [String: Character] {
@@ -218,7 +218,7 @@ enum KeyboardLayoutProvider {
         modifiers: UInt32
     ) -> Character? {
         var deadKeyState: UInt32 = 0
-        var length = 0
+        var length = UniCharCount(0)
         var chars = [UniChar](repeating: 0, count: 8)
         let status = chars.withUnsafeMutableBufferPointer { buffer in
             UCKeyTranslate(
@@ -229,7 +229,7 @@ enum KeyboardLayoutProvider {
                 keyboardType,
                 UInt32(kUCKeyTranslateNoDeadKeysBit),
                 &deadKeyState,
-                buffer.count,
+                UniCharCount(buffer.count),
                 &length,
                 buffer.baseAddress
             )
