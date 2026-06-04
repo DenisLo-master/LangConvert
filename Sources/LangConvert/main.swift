@@ -5,6 +5,9 @@ import Carbon.HIToolbox
 import Darwin
 import Foundation
 
+@_silgen_name("TISCopyInputSourceList")
+private func TISCopyInputSourceListBridge(_ properties: CFDictionary?, _ includeAllInstalled: UInt8) -> Unmanaged<CFArray>?
+
 struct HotKey: Codable, Equatable {
     var keyCode: UInt32
     var modifiers: UInt32
@@ -154,11 +157,11 @@ enum KeyboardLayoutProvider {
             kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as String,
             kTISPropertyInputSourceIsEnabled as String: true
         ]
-        guard let sources = TISCopyInputSourceList(properties as CFDictionary, false)?.takeRetainedValue() as? [TISInputSource] else {
+        guard let sourceArray = TISCopyInputSourceListBridge(properties as CFDictionary, 0)?.takeRetainedValue() as? [TISInputSource] else {
             return []
         }
 
-        return sources.compactMap { source in
+        return sourceArray.compactMap { source -> LayoutSource? in
             guard let name = property(source, kTISPropertyLocalizedName),
                   let identifier = property(source, kTISPropertyInputSourceID),
                   let layoutData = dataProperty(source, kTISPropertyUnicodeKeyLayoutData)
@@ -219,7 +222,7 @@ enum KeyboardLayoutProvider {
         modifiers: UInt32
     ) -> Character? {
         var deadKeyState: UInt32 = 0
-        var length: UInt32 = 0
+        var length = 0
         var chars = [UniChar](repeating: 0, count: 8)
         let status = chars.withUnsafeMutableBufferPointer { buffer in
             UCKeyTranslate(
@@ -230,13 +233,13 @@ enum KeyboardLayoutProvider {
                 keyboardType,
                 UInt32(kUCKeyTranslateNoDeadKeysBit),
                 &deadKeyState,
-                UInt32(buffer.count),
+                buffer.count,
                 &length,
                 buffer.baseAddress
             )
         }
         guard status == noErr, length == 1 else { return nil }
-        let value = String(utf16CodeUnits: chars, count: Int(length))
+        let value = String(utf16CodeUnits: chars, count: length)
         guard value.count == 1, let character = value.first, !character.isWhitespace else { return nil }
         return character
     }
