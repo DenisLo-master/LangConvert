@@ -54,8 +54,9 @@ jobs:
 
       - name: Verify PKG app icon payload
         run: |
-          pkgutil --payload-files build/LangConvert.pkg | grep -Fx "Applications/LangConvert.app/Contents/Resources/AppIcon.icns"
-          pkgutil --payload-files build/LangConvert.pkg | grep -Fx "Applications/LangConvert.app/Contents/Info.plist"
+          pkgutil --payload-files build/LangConvert.pkg | tee "$RUNNER_TEMP/pkg-payload-files.txt"
+          grep -E '(^|/)Applications/LangConvert\.app/Contents/Resources/AppIcon\.icns$' "$RUNNER_TEMP/pkg-payload-files.txt"
+          grep -E '(^|/)Applications/LangConvert\.app/Contents/Info\.plist$' "$RUNNER_TEMP/pkg-payload-files.txt"
 
       - name: Upload PKG artifact
         uses: actions/upload-artifact@v4
