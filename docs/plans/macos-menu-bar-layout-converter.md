@@ -419,6 +419,53 @@ Concrete checks:
 - `git diff --check` - pending.
 - macOS GitHub Actions build and pkg commit - pending after push.
 
+## Follow-up: system input source layouts
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Не фиксировать конвертацию как RU/EN в продуктовой логике.
+- В настройках показывать системные локали/раскладки.
+- Приложение должно работать, когда в macOS добавлены две раскладки, и конвертировать между ними.
+- Добавить нотификацию об этом в Settings.
+
+Acceptance criteria:
+
+- Settings показывает две системные keyboard input sources, если они доступны.
+- Settings показывает предупреждение, если добавлена только одна раскладка или не найдено keyboard layout sources.
+- Конвертер строит таблицу символов по первым двум системным keyboard layout sources через `TISCopyInputSourceList` и `UCKeyTranslate`.
+- Для каждой виртуальной клавиши и modifier-state конвертация идет в противоположный символ другой системной раскладки.
+- Hardcoded EN/RU map остается только fallback, если macOS не вернула две layout sources.
+
+### Phase 8 - System layout conversion
+
+Status: `completed`
+
+Goal: перейти от фиксированной EN/RU модели к системной паре раскладок macOS.
+
+Files/modules:
+
+- `Sources/LangConvert/main.swift`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Добавлен `KeyboardLayoutProvider` для чтения enabled keyboard input sources.
+- Добавлен dynamic conversion map через `kTISPropertyUnicodeKeyLayoutData` и `UCKeyTranslate`.
+- Settings показывает нотификацию с системными раскладками и условием двух layout sources.
+
+Concrete checks:
+
+- `python3 scripts/test-layout-converter.py` - pass for fallback logic.
+- `bash -n scripts/package-macos.sh` - pass.
+- `git diff --check` - pass.
+- macOS GitHub Actions build and pkg commit - pending after push.
+
 ## Follow-up: reinstall replacement and icon refresh
 
 Status: `completed`

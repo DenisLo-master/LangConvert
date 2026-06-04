@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import Carbon
 import Darwin
+import Foundation
 
 struct HotKey: Codable, Equatable {
     var keyCode: UInt32
@@ -92,6 +93,10 @@ final class LayoutConverter {
     }
 
     func convert(_ text: String) -> String {
+        if let systemMap = KeyboardLayoutProvider.conversionMap() {
+            return String(text.map { systemMap[$0] ?? $0 })
+        }
+
         String(text.map { character in
             enToRu[character] ?? ruToEn[character] ?? character
         })
@@ -107,6 +112,132 @@ enum AccessibilityPermission {
     static func requestPrompt() -> Bool {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         return AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+    }
+}
+
+struct KeyboardLayoutInfo {
+    let name: String
+    let identifier: String
+}
+
+enum KeyboardLayoutProvider {
+    private struct LayoutSource {
+        let source: TISInputSource
+        let info: KeyboardLayoutInfo
+        let layoutData: CFData
+    }
+
+    static func enabledLayouts() -> [KeyboardLayoutInfo] {
+        enabledKeyboardSources().map(\.info)
+    }
+
+    static func conversionMap() -> [Character: Character]? {
+        let sources = Array(enabledKeyboardSources().prefix(2))
+        guard sources.count == 2 else { return nil }
+
+        var result: [Character: Character] = [:]
+        let first = characterMap(for: sources[0])
+        let second = characterMap(for: sources[1])
+
+        for (key, firstCharacter) in first {
+            guard let secondCharacter = second[key], firstCharacter != secondCharacter else { continue }
+            result[firstCharacter] = secondCharacter
+            result[secondCharacter] = firstCharacter
+        }
+
+        return result.isEmpty ? nil : result
+    }
+
+    private static func enabledKeyboardSources() -> [LayoutSource] {
+        let properties: [String: Any] = [
+            kTISPropertyInputSourceCategory.takeUnretainedValue() as String: kTISCategoryKeyboardInputSource.takeUnretainedValue() as String,
+            kTISPropertyInputSourceIsEnabled.takeUnretainedValue() as String: true
+        ]
+        guard let sources = TISCopyInputSourceList(properties as CFDictionary, false)?.takeRetainedValue() as? [TISInputSource] else {
+            return []
+        }
+
+        return sources.compactMap { source in
+            guard let name = property(source, kTISPropertyLocalizedName),
+                  let identifier = property(source, kTISPropertyInputSourceID),
+                  let layoutData = dataProperty(source, kTISPropertyUnicodeKeyLayoutData)
+            else {
+                return nil
+            }
+            return LayoutSource(
+                source: source,
+                info: KeyboardLayoutInfo(name: name, identifier: identifier),
+                layoutData: layoutData
+            )
+        }
+    }
+
+    private static func property(_ source: TISInputSource, _ key: CFString) -> String? {
+        guard let value = TISGetInputSourceProperty(source, key) else { return nil }
+        return Unmanaged<CFString>.fromOpaque(value).takeUnretainedValue() as String
+    }
+
+    private static func dataProperty(_ source: TISInputSource, _ key: CFString) -> CFData? {
+        guard let value = TISGetInputSourceProperty(source, key) else { return nil }
+        return Unmanaged<CFData>.fromOpaque(value).takeUnretainedValue()
+    }
+
+    private static func characterMap(for source: LayoutSource) -> [String: Character] {
+        guard let bytes = CFDataGetBytePtr(source.layoutData) else { return [:] }
+        let keyboardLayout = UnsafeRawPointer(bytes).assumingMemoryBound(to: UCKeyboardLayout.self)
+        let keyboardType = UInt32(LMGetKbdType())
+        let modifiers: [UInt32] = [
+            0,
+            UInt32(shiftKey),
+            UInt32(optionKey),
+            UInt32(shiftKey | optionKey)
+        ]
+        var result: [String: Character] = [:]
+
+        for keyCode in UInt16(0)..<UInt16(128) {
+            for modifier in modifiers {
+                guard let character = character(
+                    keyboardLayout: keyboardLayout,
+                    keyboardType: keyboardType,
+                    keyCode: keyCode,
+                    modifiers: modifier
+                ) else {
+                    continue
+                }
+                result["\(keyCode):\(modifier)"] = character
+            }
+        }
+
+        return result
+    }
+
+    private static func character(
+        keyboardLayout: UnsafePointer<UCKeyboardLayout>,
+        keyboardType: UInt32,
+        keyCode: UInt16,
+        modifiers: UInt32
+    ) -> Character? {
+        var deadKeyState: UInt32 = 0
+        var length = 0
+        var chars = [UniChar](repeating: 0, count: 8)
+        let status = chars.withUnsafeMutableBufferPointer { buffer in
+            UCKeyTranslate(
+                keyboardLayout,
+                keyCode,
+                UInt16(kUCKeyActionDisplay),
+                modifiers >> 8,
+                keyboardType,
+                UInt32(kUCKeyTranslateNoDeadKeysBit),
+                &deadKeyState,
+                buffer.count,
+                &length,
+                buffer.baseAddress
+            )
+        }
+        guard status == noErr, length == 1 else { return nil }
+        let value = String(utf16CodeUnits: chars, count: length)
+        guard value.count == 1, let character = value.first, !character.isWhitespace else { return nil }
+        return character
     }
 }
 
@@ -524,6 +655,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let accessibilityNotice = NSStackView()
     private let accessibilityMessage = NSTextField(labelWithString: "")
     private let accessibilityButton = NSButton(title: "Разрешить доступ", target: nil, action: nil)
+    private let layoutsNotice = NSStackView()
+    private let layoutsMessage = NSTextField(labelWithString: "")
 
     init(
         store: SettingsStore,
@@ -595,6 +728,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         launchCheckbox.action = #selector(toggleLaunchAtLogin(_:))
 
         configureAccessibilityNotice()
+        configureLayoutsNotice()
 
         statusLabel.stringValue = "Для конвертации выделенного текста разрешите Accessibility доступ."
         statusLabel.lineBreakMode = .byWordWrapping
@@ -602,6 +736,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(accessibilityNotice)
+        stack.addArrangedSubview(layoutsNotice)
         stack.addArrangedSubview(labeled("Конвертация выделенного текста", field: convertField))
         stack.addArrangedSubview(labeled("Переключение локали", field: switchField))
         stack.addArrangedSubview(launchCheckbox)
@@ -614,10 +749,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 24)
         ])
         refreshAccessibilityNotice()
+        refreshLayoutsNotice()
     }
 
     override func showWindow(_ sender: Any?) {
         refreshAccessibilityNotice()
+        refreshLayoutsNotice()
         onEditingActive(true)
         super.showWindow(sender)
     }
@@ -657,8 +794,37 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         accessibilityNotice.widthAnchor.constraint(equalToConstant: 472).isActive = true
     }
 
+    private func configureLayoutsNotice() {
+        layoutsNotice.orientation = .horizontal
+        layoutsNotice.alignment = .centerY
+        layoutsNotice.spacing = 12
+        layoutsNotice.edgeInsets = NSEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+        layoutsNotice.wantsLayer = true
+        layoutsNotice.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        layoutsNotice.layer?.cornerRadius = 8
+
+        layoutsMessage.lineBreakMode = .byWordWrapping
+        layoutsMessage.maximumNumberOfLines = 4
+        layoutsNotice.addArrangedSubview(layoutsMessage)
+        layoutsMessage.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        layoutsNotice.widthAnchor.constraint(equalToConstant: 472).isActive = true
+    }
+
     private func refreshAccessibilityNotice() {
         accessibilityNotice.isHidden = AccessibilityPermission.isTrusted
+    }
+
+    private func refreshLayoutsNotice() {
+        let layouts = KeyboardLayoutProvider.enabledLayouts()
+        let names = layouts.map(\.name)
+
+        if names.count >= 2 {
+            layoutsMessage.stringValue = "Системные раскладки: \(names.prefix(2).joined(separator: " ↔ ")). Конвертация работает между двумя добавленными раскладками; оставьте в системе только нужную пару."
+        } else if names.count == 1 {
+            layoutsMessage.stringValue = "Системная раскладка: \(names[0]). Добавьте вторую раскладку в macOS Keyboard/Input Sources, чтобы конвертация работала между двумя локалями."
+        } else {
+            layoutsMessage.stringValue = "Добавьте две раскладки в macOS Keyboard/Input Sources. LangConvert конвертирует выделенный текст между этой парой системных локалей."
+        }
     }
 
     @objc private func requestAccessibilityPermission() {
