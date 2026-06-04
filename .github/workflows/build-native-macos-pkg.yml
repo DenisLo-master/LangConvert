@@ -39,7 +39,7 @@ jobs:
 
       - name: Build unsigned PKG
         if: ${{ env.APPLE_CERTIFICATES_P12_BASE64 == '' }}
-        run: bash scripts/package-macos.sh
+        run: bash scripts/package-macos.sh 2>&1 | tee "$RUNNER_TEMP/package-build.log"
 
       - name: Build signed and notarized PKG
         if: ${{ env.APPLE_CERTIFICATES_P12_BASE64 != '' }}
@@ -52,6 +52,20 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: bash scripts/package-macos.sh
 
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LangConvert-build-log
+          path: ${{ runner.temp }}/package-build.log
+          if-no-files-found: ignore
+
+      - name: Verify PKG app icon payload
+        run: |
+          pkgutil --payload-files build/LangConvert.pkg | tee "$RUNNER_TEMP/pkg-payload-files.txt"
+          grep -E '(^|/)Applications/LangConvert\.app/Contents/Resources/AppIcon\.icns$' "$RUNNER_TEMP/pkg-payload-files.txt"
+          grep -E '(^|/)Applications/LangConvert\.app/Contents/Info\.plist$' "$RUNNER_TEMP/pkg-payload-files.txt"
+
       - name: Upload PKG artifact
         uses: actions/upload-artifact@v4
         with:
@@ -59,8 +73,8 @@ jobs:
           path: build/LangConvert.pkg
           if-no-files-found: error
 
-      - name: Commit PKG to main
-        if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip pkg commit]')
+      - name: Commit PKG to branch
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/codex/')) && !contains(github.event.head_commit.message, '[skip pkg commit]')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -69,5 +83,5 @@ jobs:
             echo "No PKG changes to commit."
           else
             git commit -m "Add built macOS pkg [skip pkg commit]"
-            git push
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi

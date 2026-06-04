@@ -18,12 +18,19 @@ APPLE_TEAM_ID="${APPLE_TEAM_ID:-}"
 APPLE_APP_SPECIFIC_PASSWORD="${APPLE_APP_SPECIFIC_PASSWORD:-}"
 
 swift build -c release --package-path "$ROOT_DIR"
+python3 "$ROOT_DIR/scripts/generate-app-icon.py"
 
 rm -rf "$APP_DIR" "$PKG_PATH"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PKG_ROOT/Applications" "$PKG_SCRIPTS"
 
 cp "$ROOT_DIR/.build/release/LangConvert" "$MACOS_DIR/LangConvert"
 cp "$ROOT_DIR/packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
+cp "$ROOT_DIR/packaging/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+git -C "$ROOT_DIR" rev-parse --short HEAD > "$RESOURCES_DIR/BuildCommit.txt"
+rm -rf "$BUILD_DIR/AppIcon.verify.iconset"
+iconutil -c iconset "$RESOURCES_DIR/AppIcon.icns" -o "$BUILD_DIR/AppIcon.verify.iconset" >/dev/null
+test -f "$BUILD_DIR/AppIcon.verify.iconset/icon_512x512@2x.png"
+rm -rf "$BUILD_DIR/AppIcon.verify.iconset"
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
 chmod +x "$MACOS_DIR/LangConvert"
@@ -55,6 +62,11 @@ set -euo pipefail
 /bin/sleep 1
 /usr/bin/pkill -x LangConvert >/dev/null 2>&1 || true
 
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [ -x "$LSREGISTER" ] && [ -e "/Applications/LangConvert.app" ]; then
+  "$LSREGISTER" -u "/Applications/LangConvert.app" >/dev/null 2>&1 || true
+fi
+
 for app in \
   "/Applications/LangConvert.app" \
   /Applications/LangConvert\ [0-9]*.app \
@@ -77,14 +89,20 @@ APP_PATH="/Applications/LangConvert.app"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 /usr/bin/touch "$APP_PATH" || true
+/usr/bin/touch "$APP_PATH/Contents/Info.plist" "$APP_PATH/Contents/Resources/AppIcon.icns" >/dev/null 2>&1 || true
 if [ -x "$LSREGISTER" ]; then
   "$LSREGISTER" -f "$APP_PATH" >/dev/null 2>&1 || true
 fi
+/usr/bin/qlmanage -r >/dev/null 2>&1 || true
 /usr/bin/qlmanage -r cache >/dev/null 2>&1 || true
 
 logged_in_user="$(/usr/bin/stat -f %Su /dev/console)"
 if [ -n "$logged_in_user" ] && [ "$logged_in_user" != "root" ]; then
   user_id="$(/usr/bin/id -u "$logged_in_user")"
+  user_home="$(/usr/bin/dscl . -read "/Users/$logged_in_user" NFSHomeDirectory 2>/dev/null | /usr/bin/awk '{print $2}')"
+  if [ -n "$user_home" ]; then
+    /bin/launchctl asuser "$user_id" /bin/rm -rf "$user_home/Library/Caches/com.apple.iconservices.store" >/dev/null 2>&1 || true
+  fi
   /bin/launchctl asuser "$user_id" /usr/bin/osascript -e 'tell application "Finder" to update POSIX file "/Applications/LangConvert.app"' >/dev/null 2>&1 || true
   /bin/launchctl asuser "$user_id" /usr/bin/open -a "$APP_PATH" >/dev/null 2>&1 || true
 fi
@@ -99,7 +117,7 @@ PKGBUILD_ARGS=(
   --scripts "$PKG_SCRIPTS"
   --install-location "/"
   --identifier "app.langconvert.desktop.pkg"
-  --version "0.1.0"
+  --version "0.1.5"
 )
 
 if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
