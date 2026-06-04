@@ -325,6 +325,56 @@ QA / Expert Coverage Matrix:
 | app icon validity | build pkg on macOS | `sips`/`iconutil` generation and roundtrip | pass | CI log | qa | pending-ci |
 | pkg payload | inspect built pkg | `pkgutil --payload-files` contains app icon path | pass | CI log | qa | pending-ci |
 
+## Follow-up: modifier-only hotkeys and full-bleed icon
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Для смены раскладки нужно назначать `Command + Shift` без дополнительной клавиши.
+- Вокруг app icon не должно быть белого внешнего фона/паддинга; иконку нужно увеличить.
+
+Acceptance criteria:
+
+- Hotkey recorder ловит `flagsChanged` и сохраняет modifier-only shortcuts.
+- Глобальный shortcut manager запускает modifier-only shortcut по `flagsChanged`, без `RegisterEventHotKey`.
+- `AppIconSource.png` непрозрачный по всему canvas и визуально увеличен к краям.
+- Версия сборки повышена, чтобы новая установка не выглядела для macOS как старый bundle metadata.
+
+### Phase 6 - Modifier hotkey and icon scale
+
+Status: `completed`
+
+Goal: исправить назначение `Cmd + Shift` и убрать визуальный внешний фон у app icon.
+
+Files/modules:
+
+- `Sources/LangConvert/main.swift`
+- `packaging/AppIconSource.png`
+- `packaging/Info.plist`
+- `scripts/package-macos.sh`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Добавлен sentinel `HotKey.modifierOnlyKeyCode`.
+- `HotKeyRecorderField` записывает modifier-only shortcuts через `flagsChanged`.
+- `GlobalHotKeyManager` обрабатывает modifier-only shortcuts через local/global `flagsChanged` monitors.
+- `AppIconSource.png` увеличен и скомпозитен на непрозрачный черный фон.
+- Bundle/pkg version bumped до `0.1.2` / build `3`.
+
+Concrete checks:
+
+- `python3` PNG source check: 1024x1024 and no transparent pixels - pass.
+- `python3` parse `Info.plist` and confirm version/icon metadata - pass.
+- `bash -n scripts/package-macos.sh` - pass.
+- `git diff --check` - pass.
+- macOS GitHub Actions build and pkg commit - pending after push.
+
 ## Follow-up: reinstall replacement and icon refresh
 
 Status: `completed`

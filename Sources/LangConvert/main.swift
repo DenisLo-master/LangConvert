@@ -7,6 +7,12 @@ struct HotKey: Codable, Equatable {
     var keyCode: UInt32
     var modifiers: UInt32
     var display: String
+
+    static let modifierOnlyKeyCode = UInt32.max
+
+    var isModifierOnly: Bool {
+        keyCode == Self.modifierOnlyKeyCode
+    }
 }
 
 struct AppSettings: Codable {
@@ -254,6 +260,9 @@ final class LoginItemManager {
 final class GlobalHotKeyManager {
     private var refs: [EventHotKeyRef?] = []
     private var actions: [UInt32: () -> Void] = [:]
+    private var modifierOnlyActions: [UInt32: (hotKey: HotKey, action: () -> Void)] = [:]
+    private var modifierOnlyArmed: [UInt32: Bool] = [:]
+    private var flagsChangedMonitors: [Any] = []
 
     init() {
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -286,9 +295,16 @@ final class GlobalHotKeyManager {
         unregisterAll()
         register(id: 1, hotKey: convert, action: onConvert)
         register(id: 2, hotKey: switchLocale, action: onSwitchLocale)
+        installFlagsChangedMonitorsIfNeeded()
     }
 
     private func register(id: UInt32, hotKey: HotKey, action: @escaping () -> Void) {
+        if hotKey.isModifierOnly {
+            modifierOnlyActions[id] = (hotKey, action)
+            modifierOnlyArmed[id] = false
+            return
+        }
+
         var ref: EventHotKeyRef?
         var hotKeyID = EventHotKeyID(signature: OSType(0x4C434356), id: id)
         let status = RegisterEventHotKey(
@@ -306,6 +322,36 @@ final class GlobalHotKeyManager {
         }
     }
 
+    private func installFlagsChangedMonitorsIfNeeded() {
+        guard !modifierOnlyActions.isEmpty, flagsChangedMonitors.isEmpty else { return }
+        let handler: (NSEvent) -> Void = { [weak self] event in
+            self?.handleFlagsChanged(event)
+        }
+        if let globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: handler) {
+            flagsChangedMonitors.append(globalMonitor)
+        }
+        if let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlagsChanged(event)
+            return event
+        } {
+            flagsChangedMonitors.append(localMonitor)
+        }
+    }
+
+    private func handleFlagsChanged(_ event: NSEvent) {
+        let modifiers = Self.carbonModifiers(from: event.modifierFlags)
+        for (id, registration) in modifierOnlyActions {
+            if modifiers == registration.hotKey.modifiers {
+                if modifierOnlyArmed[id] != true {
+                    modifierOnlyArmed[id] = true
+                    registration.action()
+                }
+            } else {
+                modifierOnlyArmed[id] = false
+            }
+        }
+    }
+
     private func unregisterAll() {
         refs.forEach { ref in
             if let ref {
@@ -314,6 +360,19 @@ final class GlobalHotKeyManager {
         }
         refs.removeAll()
         actions.removeAll()
+        modifierOnlyActions.removeAll()
+        modifierOnlyArmed.removeAll()
+        flagsChangedMonitors.forEach { NSEvent.removeMonitor($0) }
+        flagsChangedMonitors.removeAll()
+    }
+
+    private static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
+        var result: UInt32 = 0
+        if flags.contains(.command) { result |= UInt32(cmdKey) }
+        if flags.contains(.shift) { result |= UInt32(shiftKey) }
+        if flags.contains(.control) { result |= UInt32(controlKey) }
+        if flags.contains(.option) { result |= UInt32(optionKey) }
+        return result
     }
 }
 
@@ -360,11 +419,22 @@ final class HotKeyRecorderField: NSTextField {
         _ = record(event)
     }
 
+    override func flagsChanged(with event: NSEvent) {
+        _ = recordModifierOnly(event)
+    }
+
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
             guard let self, self.window?.firstResponder === self else { return event }
-            return self.record(event) ? nil : event
+            switch event.type {
+            case .keyDown:
+                return self.record(event) ? nil : event
+            case .flagsChanged:
+                return self.recordModifierOnly(event) ? nil : event
+            default:
+                return event
+            }
         }
     }
 
@@ -389,6 +459,20 @@ final class HotKeyRecorderField: NSTextField {
         return true
     }
 
+    private func recordModifierOnly(_ event: NSEvent) -> Bool {
+        let modifiers = carbonModifiers(from: event.modifierFlags)
+        guard modifiers != 0 else { return false }
+
+        let hotKey = HotKey(
+            keyCode: HotKey.modifierOnlyKeyCode,
+            modifiers: modifiers,
+            display: displayString(modifiers: modifiers)
+        )
+        stringValue = hotKey.display
+        onRecord?(hotKey)
+        return true
+    }
+
     private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
         var result: UInt32 = 0
         if flags.contains(.command) { result |= UInt32(cmdKey) }
@@ -399,13 +483,22 @@ final class HotKeyRecorderField: NSTextField {
     }
 
     private func displayString(for event: NSEvent, modifiers: UInt32) -> String {
+        var parts = displayParts(modifiers: modifiers)
+        parts.append(keyName(event))
+        return parts.joined(separator: " + ")
+    }
+
+    private func displayString(modifiers: UInt32) -> String {
+        displayParts(modifiers: modifiers).joined(separator: " + ")
+    }
+
+    private func displayParts(modifiers: UInt32) -> [String] {
         var parts: [String] = []
         if modifiers & UInt32(cmdKey) != 0 { parts.append("Cmd") }
         if modifiers & UInt32(controlKey) != 0 { parts.append("Ctrl") }
         if modifiers & UInt32(optionKey) != 0 { parts.append("Option") }
         if modifiers & UInt32(shiftKey) != 0 { parts.append("Shift") }
-        parts.append(keyName(event))
-        return parts.joined(separator: " + ")
+        return parts
     }
 
     private func keyName(_ event: NSEvent) -> String {
