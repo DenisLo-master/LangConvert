@@ -26,6 +26,7 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PKG_ROOT/Applications" "$PKG_SCRIPTS"
 cp "$ROOT_DIR/.build/release/LangConvert" "$MACOS_DIR/LangConvert"
 cp "$ROOT_DIR/packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/packaging/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+git -C "$ROOT_DIR" rev-parse --short HEAD > "$RESOURCES_DIR/BuildCommit.txt"
 rm -rf "$BUILD_DIR/AppIcon.verify.iconset"
 iconutil -c iconset "$RESOURCES_DIR/AppIcon.icns" -o "$BUILD_DIR/AppIcon.verify.iconset" >/dev/null
 test -f "$BUILD_DIR/AppIcon.verify.iconset/icon_512x512@2x.png"
