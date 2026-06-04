@@ -21,6 +21,7 @@ struct AppSettings: Codable {
     var convertHotKey: HotKey
     var switchLocaleHotKey: HotKey
     var launchAtLogin: Bool
+    var language: AppLanguage
 
     static let defaults = AppSettings(
         convertHotKey: HotKey(
@@ -33,8 +34,256 @@ struct AppSettings: Codable {
             modifiers: UInt32(cmdKey | shiftKey),
             display: "Cmd + Shift + Space"
         ),
-        launchAtLogin: false
+        launchAtLogin: false,
+        language: .defaultLanguage
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case convertHotKey
+        case switchLocaleHotKey
+        case launchAtLogin
+        case language
+    }
+
+    init(convertHotKey: HotKey, switchLocaleHotKey: HotKey, launchAtLogin: Bool, language: AppLanguage) {
+        self.convertHotKey = convertHotKey
+        self.switchLocaleHotKey = switchLocaleHotKey
+        self.launchAtLogin = launchAtLogin
+        self.language = language
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        convertHotKey = try container.decodeIfPresent(HotKey.self, forKey: .convertHotKey) ?? Self.defaults.convertHotKey
+        switchLocaleHotKey = try container.decodeIfPresent(HotKey.self, forKey: .switchLocaleHotKey) ?? Self.defaults.switchLocaleHotKey
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
+        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .defaultLanguage
+    }
+}
+
+enum AppLanguage: String, CaseIterable, Codable {
+    case english = "en"
+    case russian = "ru"
+
+    var displayName: String {
+        switch self {
+        case .english: "English"
+        case .russian: "Русский"
+        }
+    }
+
+    static var defaultLanguage: AppLanguage {
+        let preferred = Locale.preferredLanguages.first?.split(separator: "-").first.map(String.init)
+        return AppLanguage(rawValue: preferred ?? "") ?? .english
+    }
+}
+
+enum AppMetadata {
+    static let developerEmail = "flo.production.studio@gmail.com"
+
+    static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.7"
+    }
+}
+
+enum AppText {
+    static func settings(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Settings"
+        case .russian: "Настройки"
+        }
+    }
+
+    static func about(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "About LangConvert"
+        case .russian: "О LangConvert"
+        }
+    }
+
+    static func quit(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Quit"
+        case .russian: "Выход"
+        }
+    }
+
+    static func ok(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "OK"
+        case .russian: "ОК"
+        }
+    }
+
+    static func languageLabel(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Language"
+        case .russian: "Язык"
+        }
+    }
+
+    static func languageHint(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Used for the application interface."
+        case .russian: "Используется для интерфейса приложения."
+        }
+    }
+
+    static func convertHotKey(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Convert selected text"
+        case .russian: "Конвертация выделенного текста"
+        }
+    }
+
+    static func switchLocaleHotKey(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Switch system locale"
+        case .russian: "Переключение системной локали"
+        }
+    }
+
+    static func launchAtLogin(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Launch app at login"
+        case .russian: "Автозапуск приложения с загрузкой системы"
+        }
+    }
+
+    static func accessibilityButton(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Allow access"
+        case .russian: "Разрешить доступ"
+        }
+    }
+
+    static func accessibilityNotice(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Allow Accessibility access on first launch, otherwise hotkeys cannot replace selected text."
+        case .russian: "Для первого запуска разрешите Accessibility доступ, иначе горячие клавиши не смогут заменить выделенный текст."
+        }
+    }
+
+    static func initialStatus(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Allow Accessibility access to convert selected text."
+        case .russian: "Для конвертации выделенного текста разрешите Accessibility доступ."
+        }
+    }
+
+    static func accessibilityRequired(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Allow Accessibility access for LangConvert."
+        case .russian: "Разрешите Accessibility доступ для LangConvert."
+        }
+    }
+
+    static func noSelection(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Could not read selected text."
+        case .russian: "Не удалось получить выделенный текст."
+        }
+    }
+
+    static func textConverted(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Text converted."
+        case .russian: "Текст сконвертирован."
+        }
+    }
+
+    static func localeSwitchRequested(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Locale switch requested."
+        case .russian: "Запрошено переключение локали."
+        }
+    }
+
+    static func convertHotKeySaved(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Convert hotkey saved."
+        case .russian: "Горячая клавиша конвертации сохранена."
+        }
+    }
+
+    static func switchLocaleHotKeySaved(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Locale switch hotkey saved."
+        case .russian: "Горячая клавиша переключения локали сохранена."
+        }
+    }
+
+    static func languageSaved(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Language updated."
+        case .russian: "Язык интерфейса обновлен."
+        }
+    }
+
+    static func accessibilityAlreadyAllowed(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Accessibility access is already allowed."
+        case .russian: "Accessibility доступ уже выдан."
+        }
+    }
+
+    static func accessibilityOpenSettings(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Allow LangConvert Accessibility access in System Settings."
+        case .russian: "Выдайте LangConvert Accessibility доступ в системных настройках."
+        }
+    }
+
+    static func launchAtLoginUpdated(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Launch at login setting updated."
+        case .russian: "Настройка автозапуска обновлена."
+        }
+    }
+
+    static func launchAtLoginBundleOnly(_ language: AppLanguage) -> String {
+        switch language {
+        case .english: "Launch at login is available only from the .app bundle."
+        case .russian: "Автозапуск доступен только из .app bundle."
+        }
+    }
+
+    static func layoutsNotice(_ names: [String], language: AppLanguage) -> String {
+        if names.count >= 2 {
+            let pair = names.prefix(2).joined(separator: " ↔ ")
+            switch language {
+            case .english:
+                return "System layouts: \(pair). Conversion works between the first two enabled layouts; keep only the needed pair in macOS."
+            case .russian:
+                return "Системные раскладки: \(pair). Конвертация работает между двумя добавленными раскладками; оставьте в системе только нужную пару."
+            }
+        }
+
+        if names.count == 1 {
+            switch language {
+            case .english:
+                return "System layout: \(names[0]). Add a second layout in macOS Keyboard/Input Sources to convert between two locales."
+            case .russian:
+                return "Системная раскладка: \(names[0]). Добавьте вторую раскладку в macOS Keyboard/Input Sources, чтобы конвертация работала между двумя локалями."
+            }
+        }
+
+        switch language {
+        case .english:
+            return "Add two layouts in macOS Keyboard/Input Sources. LangConvert converts selected text between that system locale pair."
+        case .russian:
+            return "Добавьте две раскладки в macOS Keyboard/Input Sources. LangConvert конвертирует выделенный текст между этой парой системных локалей."
+        }
+    }
+
+    static func aboutMessage(version: String, language: AppLanguage) -> String {
+        switch language {
+        case .english:
+            return "Version: \(version)\nCreated by: \(AppMetadata.developerEmail)"
+        case .russian:
+            return "Версия: \(version)\nСоздано: \(AppMetadata.developerEmail)"
+        }
+    }
 }
 
 final class SettingsStore {
@@ -245,9 +494,9 @@ enum KeyboardLayoutProvider {
 final class KeyboardAutomation {
     private let converter = LayoutConverter()
 
-    func convertSelection() -> String {
+    func convertSelection(language: AppLanguage) -> String {
         guard AccessibilityPermission.requestPrompt() else {
-            return "Разрешите Accessibility доступ для LangConvert."
+            return AppText.accessibilityRequired(language)
         }
 
         let pasteboard = NSPasteboard.general
@@ -259,7 +508,7 @@ final class KeyboardAutomation {
 
         guard let selected = pasteboard.string(forType: .string), !selected.isEmpty else {
             restore(previous)
-            return "Не удалось получить выделенный текст."
+            return AppText.noSelection(language)
         }
 
         let converted = converter.convert(selected)
@@ -268,16 +517,16 @@ final class KeyboardAutomation {
         postKey(keyCode: 9, flags: .maskCommand)
         Thread.sleep(forTimeInterval: 0.2)
         restore(previous)
-        return "Текст сконвертирован."
+        return AppText.textConverted(language)
     }
 
-    func switchLocale() -> String {
+    func switchLocale(language: AppLanguage) -> String {
         guard AccessibilityPermission.requestPrompt() else {
-            return "Разрешите Accessibility доступ для LangConvert."
+            return AppText.accessibilityRequired(language)
         }
 
         postKey(keyCode: 49, flags: .maskControl)
-        return "Запрошено переключение локали."
+        return AppText.localeSwitchRequested(language)
     }
 
     private func postKey(keyCode: CGKeyCode, flags: CGEventFlags) {
@@ -651,32 +900,41 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let store: SettingsStore
     private let loginItems: LoginItemManager
     private let onChange: () -> Void
+    private let onLanguageChange: () -> Void
     private let onEditingActive: (Bool) -> Void
     private let statusLabel = NSTextField(labelWithString: "")
     private let accessibilityNotice = NSStackView()
     private let accessibilityMessage = NSTextField(labelWithString: "")
-    private let accessibilityButton = NSButton(title: "Разрешить доступ", target: nil, action: nil)
+    private let accessibilityButton = NSButton(title: "", target: nil, action: nil)
     private let layoutsNotice = NSStackView()
     private let layoutsMessage = NSTextField(labelWithString: "")
+    private let titleLabel = NSTextField(labelWithString: "LangConvert")
+    private let languageLabel = NSTextField(labelWithString: "")
+    private let languageHintLabel = NSTextField(labelWithString: "")
+    private let languagePopup = NSPopUpButton()
+    private let convertLabel = NSTextField(labelWithString: "")
+    private let switchLocaleLabel = NSTextField(labelWithString: "")
+    private let launchCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
 
     init(
         store: SettingsStore,
         loginItems: LoginItemManager,
         onChange: @escaping () -> Void,
+        onLanguageChange: @escaping () -> Void,
         onEditingActive: @escaping (Bool) -> Void
     ) {
         self.store = store
         self.loginItems = loginItems
         self.onChange = onChange
+        self.onLanguageChange = onLanguageChange
         self.onEditingActive = onEditingActive
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
-        window.title = "LangConvert Settings"
         window.center()
         super.init(window: window)
         window.delegate = self
@@ -700,8 +958,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let title = NSTextField(labelWithString: "LangConvert")
-        title.font = .boldSystemFont(ofSize: 24)
+        titleLabel.font = .boldSystemFont(ofSize: 24)
+
+        configureLanguagePopup()
 
         let convertField = makeHotKeyField(value: store.settings.convertHotKey.display)
         convertField.onRecord = { [weak self] hotKey in
@@ -710,7 +969,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             settings.convertHotKey = hotKey
             store.update(settings)
             onChange()
-            setStatus("Горячая клавиша конвертации сохранена.")
+            setStatus(AppText.convertHotKeySaved(store.settings.language))
         }
 
         let switchField = makeHotKeyField(value: store.settings.switchLocaleHotKey.display)
@@ -720,10 +979,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             settings.switchLocaleHotKey = hotKey
             store.update(settings)
             onChange()
-            setStatus("Горячая клавиша переключения локали сохранена.")
+            setStatus(AppText.switchLocaleHotKeySaved(store.settings.language))
         }
 
-        let launchCheckbox = NSButton(checkboxWithTitle: "Автозапуск приложения с загрузкой системы", target: nil, action: nil)
         launchCheckbox.state = loginItems.isEnabled ? .on : .off
         launchCheckbox.target = self
         launchCheckbox.action = #selector(toggleLaunchAtLogin(_:))
@@ -731,15 +989,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         configureAccessibilityNotice()
         configureLayoutsNotice()
 
-        statusLabel.stringValue = "Для конвертации выделенного текста разрешите Accessibility доступ."
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.maximumNumberOfLines = 2
 
-        stack.addArrangedSubview(title)
+        stack.addArrangedSubview(titleLabel)
         stack.addArrangedSubview(accessibilityNotice)
         stack.addArrangedSubview(layoutsNotice)
-        stack.addArrangedSubview(labeled("Конвертация выделенного текста", field: convertField))
-        stack.addArrangedSubview(labeled("Переключение локали", field: switchField))
+        stack.addArrangedSubview(languageSection())
+        stack.addArrangedSubview(labeled(label: convertLabel, field: convertField))
+        stack.addArrangedSubview(labeled(label: switchLocaleLabel, field: switchField))
         stack.addArrangedSubview(launchCheckbox)
         stack.addArrangedSubview(statusLabel)
 
@@ -749,6 +1007,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
             stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 24)
         ])
+        applyLocalization(updateStatus: true)
         refreshAccessibilityNotice()
         refreshLayoutsNotice()
     }
@@ -781,7 +1040,6 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         accessibilityNotice.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         accessibilityNotice.layer?.cornerRadius = 8
 
-        accessibilityMessage.stringValue = "Для первого запуска разрешите Accessibility доступ, иначе горячие клавиши не смогут заменить выделенный текст."
         accessibilityMessage.lineBreakMode = .byWordWrapping
         accessibilityMessage.maximumNumberOfLines = 3
 
@@ -818,21 +1076,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func refreshLayoutsNotice() {
         let layouts = KeyboardLayoutProvider.enabledLayouts()
         let names = layouts.map(\.name)
-
-        if names.count >= 2 {
-            layoutsMessage.stringValue = "Системные раскладки: \(names.prefix(2).joined(separator: " ↔ ")). Конвертация работает между двумя добавленными раскладками; оставьте в системе только нужную пару."
-        } else if names.count == 1 {
-            layoutsMessage.stringValue = "Системная раскладка: \(names[0]). Добавьте вторую раскладку в macOS Keyboard/Input Sources, чтобы конвертация работала между двумя локалями."
-        } else {
-            layoutsMessage.stringValue = "Добавьте две раскладки в macOS Keyboard/Input Sources. LangConvert конвертирует выделенный текст между этой парой системных локалей."
-        }
+        layoutsMessage.stringValue = AppText.layoutsNotice(names, language: store.settings.language)
     }
 
     @objc private func requestAccessibilityPermission() {
         if AccessibilityPermission.requestPrompt() {
-            setStatus("Accessibility доступ уже выдан.")
+            setStatus(AppText.accessibilityAlreadyAllowed(store.settings.language))
         } else {
-            setStatus("Выдайте LangConvert Accessibility доступ в системных настройках.")
+            setStatus(AppText.accessibilityOpenSettings(store.settings.language))
         }
     }
 
@@ -843,7 +1094,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         settings.launchAtLogin = ok && enabled
         store.update(settings)
         sender.state = settings.launchAtLogin ? .on : .off
-        setStatus(ok ? "Настройка автозапуска обновлена." : "Автозапуск доступен только из .app bundle.")
+        setStatus(ok ? AppText.launchAtLoginUpdated(settings.language) : AppText.launchAtLoginBundleOnly(settings.language))
     }
 
     private func makeHotKeyField(value: String) -> HotKeyRecorderField {
@@ -859,8 +1110,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         return field
     }
 
-    private func labeled(_ title: String, field: NSView) -> NSView {
-        let label = NSTextField(labelWithString: title)
+    private func labeled(label: NSTextField, field: NSView) -> NSView {
         label.font = .boldSystemFont(ofSize: 13)
         let row = NSStackView(views: [label, field])
         row.orientation = .horizontal
@@ -868,6 +1118,75 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         row.spacing = 16
         label.widthAnchor.constraint(equalToConstant: 210).isActive = true
         return row
+    }
+
+    private func languageSection() -> NSView {
+        languageLabel.font = .boldSystemFont(ofSize: 13)
+        languageHintLabel.font = .systemFont(ofSize: 12)
+        languageHintLabel.textColor = .secondaryLabelColor
+
+        let column = NSStackView(views: [languagePopup, languageHintLabel])
+        column.orientation = .vertical
+        column.alignment = .leading
+        column.spacing = 4
+        languagePopup.widthAnchor.constraint(equalToConstant: 240).isActive = true
+
+        let row = NSStackView(views: [languageLabel, column])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 16
+        languageLabel.widthAnchor.constraint(equalToConstant: 210).isActive = true
+        return row
+    }
+
+    private func configureLanguagePopup() {
+        languagePopup.target = self
+        languagePopup.action = #selector(languageChanged)
+        languagePopup.removeAllItems()
+        for language in AppLanguage.allCases {
+            languagePopup.addItem(withTitle: language.displayName)
+            languagePopup.lastItem?.representedObject = language.rawValue
+        }
+        selectLanguage(store.settings.language)
+    }
+
+    private func selectLanguage(_ selectedLanguage: AppLanguage) {
+        if let item = languagePopup.itemArray.first(where: { $0.representedObject as? String == selectedLanguage.rawValue }) {
+            languagePopup.select(item)
+        }
+    }
+
+    private func applyLocalization(updateStatus: Bool) {
+        let language = store.settings.language
+        window?.title = AppText.settings(language)
+        languageLabel.stringValue = AppText.languageLabel(language)
+        languageHintLabel.stringValue = AppText.languageHint(language)
+        convertLabel.stringValue = AppText.convertHotKey(language)
+        switchLocaleLabel.stringValue = AppText.switchLocaleHotKey(language)
+        launchCheckbox.title = AppText.launchAtLogin(language)
+        accessibilityButton.title = AppText.accessibilityButton(language)
+        accessibilityMessage.stringValue = AppText.accessibilityNotice(language)
+        if updateStatus || statusLabel.stringValue.isEmpty {
+            statusLabel.stringValue = AppText.initialStatus(language)
+        }
+        refreshLayoutsNotice()
+    }
+
+    @objc private func languageChanged() {
+        guard
+            let rawValue = languagePopup.selectedItem?.representedObject as? String,
+            let language = AppLanguage(rawValue: rawValue),
+            language != store.settings.language
+        else {
+            return
+        }
+
+        var settings = store.settings
+        settings.language = language
+        store.update(settings)
+        applyLocalization(updateStatus: false)
+        setStatus(AppText.languageSaved(language))
+        onLanguageChange()
     }
 }
 
@@ -878,6 +1197,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotKeys = GlobalHotKeyManager()
     private var statusItem: NSStatusItem?
     private var settingsWindow: SettingsWindowController?
+    private var settingsMenuItem: NSMenuItem?
+    private var aboutMenuItem: NSMenuItem?
+    private var quitMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -891,11 +1213,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.title = item.button?.image == nil ? "K" : ""
 
         let menu = NSMenu()
-        menu.addItem(menuItem("Settings", action: #selector(openSettings), keyEquivalent: ","))
+        let settingsItem = menuItem(AppText.settings(store.settings.language), action: #selector(openSettings), keyEquivalent: ",")
+        let aboutItem = menuItem(AppText.about(store.settings.language), action: #selector(openAbout), keyEquivalent: "")
+        let quitItem = menuItem(AppText.quit(store.settings.language), action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(settingsItem)
+        menu.addItem(aboutItem)
         menu.addItem(.separator())
-        menu.addItem(menuItem("Quit", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(quitItem)
         item.menu = menu
         statusItem = item
+        settingsMenuItem = settingsItem
+        aboutMenuItem = aboutItem
+        quitMenuItem = quitItem
     }
 
     private func menuItem(_ title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
@@ -921,6 +1250,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 onChange: { [weak self] in
                     self?.registerHotKeys()
                 },
+                onLanguageChange: { [weak self] in
+                    self?.applyLocalization()
+                },
                 onEditingActive: { [weak self] isActive in
                     if isActive {
                         self?.hotKeys.suspend()
@@ -934,14 +1266,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow?.showWindow(nil)
     }
 
+    @objc private func openAbout() {
+        let language = store.settings.language
+        let alert = NSAlert()
+        alert.messageText = AppText.about(language)
+        alert.informativeText = AppText.aboutMessage(version: AppMetadata.version, language: language)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: AppText.ok(language))
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
     @objc private func convertSelection() {
-        let message = automation.convertSelection()
+        let message = automation.convertSelection(language: store.settings.language)
         settingsWindow?.setStatus(message)
     }
 
     @objc private func switchLocale() {
-        let message = automation.switchLocale()
+        let message = automation.switchLocale(language: store.settings.language)
         settingsWindow?.setStatus(message)
+    }
+
+    private func applyLocalization() {
+        let language = store.settings.language
+        settingsMenuItem?.title = AppText.settings(language)
+        aboutMenuItem?.title = AppText.about(language)
+        quitMenuItem?.title = AppText.quit(language)
     }
 
     @objc private func quit() {

@@ -518,3 +518,150 @@ QA / Expert Coverage Matrix:
 | --- | --- | --- | --- | --- | --- | --- |
 | reinstall replacement | install pkg over existing app | macOS installer smoke recommended | pass | package script diff and CI build | qa | pending-macos |
 | icon refresh | open `/Applications` after reinstall | macOS Finder/LaunchServices smoke recommended | pass | source diff and CI build | qa | pending-macos |
+
+## Follow-up: README, license, About and UI localization
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Добавить красивое описание продукта в README со скриншотом.
+- Указать лицензию: свободное использование разрешено, но переиспользование
+  для доработки/создания производных работ требует обращения к автору.
+- Добавить пункт "О продукте" в модалке/меню, где видны версия и автор
+  `flo.production.studio@gmail.com`.
+- Добавить переключатель локали приложения по паттерну проекта
+  `DenisLo-master/Dictation`: модель языка, локализованные UI-тексты и
+  control выбора языка в настройках.
+- Перевести все видимые UI-тексты приложения на RU/EN.
+
+Acceptance criteria:
+
+- README содержит описание, скриншот и секцию license/usage terms.
+- Приложение хранит выбранную UI-локаль в settings и применяет ее к Settings,
+  status-bar menu, About-окну и runtime status messages.
+- В Settings есть control выбора локали RU/EN, аналогичный AppLanguage/AppText
+  подходу из `Dictation`.
+- В меню есть пункт About, открывающий modal/alert с версией из bundle metadata
+  и строкой `Created by: flo.production.studio@gmail.com` или RU-эквивалентом.
+- Default language выбирается по системной preferred locale с fallback на EN.
+
+### TDD Acceptance Test Design
+
+Status: `TDD_ACCEPTANCE_TESTS_READY`
+
+| Case | Linked AC | Scenario | Given | When | Then |
+| --- | --- | --- | --- | --- | --- |
+| TDD-L1 | README | Product README | Открыт README | Пользователь читает начало файла | Видит описание продукта, скриншот и условия использования |
+| TDD-L2 | UI locale | Language switch | Открыто Settings | Пользователь выбирает RU или EN | Все labels, buttons, menu items and statuses switch to selected language |
+| TDD-L3 | About | Product info modal | Открыто status-bar menu | Пользователь выбирает About | Показаны версия приложения и `flo.production.studio@gmail.com` |
+| TDD-L4 | Persistence | Saved language | Пользователь выбрал RU | Приложение перезапускается | Settings открываются с RU и локализованным UI |
+
+### Verified Code Surfaces
+
+- `Sources/LangConvert/main.swift` - AppKit settings window, menu, hotkey
+  automation status strings and persisted settings.
+- `README.md` - product description, screenshot and license terms.
+- `docs/assets/langconvert-settings.svg` - README screenshot/mockup asset.
+- `docs/plans/macos-menu-bar-layout-converter.md` - persisted pipeline plan.
+
+### Phase 9 - Product presentation and localization
+
+Status: `completed`
+
+Goal: добавить локализованный RU/EN UI, About-информацию и публичное описание
+продукта без изменения core conversion/automation logic.
+
+Files/modules:
+
+- `Sources/LangConvert/main.swift`
+- `README.md`
+- `docs/assets/langconvert-settings.svg`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Добавить `AppLanguage` и `AppText` для всех видимых UI/status strings.
+- Расширить `AppSettings` выбранной локалью с backward-compatible decode.
+- Добавить language popup в Settings и обновление всех labels/buttons/menu.
+- Добавить About пункт в status menu и modal с версией/автором.
+- Обновить README и добавить screenshot asset.
+
+Concrete checks:
+
+- `git diff --check` - pass.
+- `bash -n scripts/package-macos.sh` - pass.
+- `swift build` - not run in this Linux container because `swift` is unavailable.
+- `pnpm lint` / `pnpm build` - not run because this checkout has no
+  `package.json`.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| settings localization | open Settings and switch language | static source review; macOS smoke recommended | pass | source diff | qa | pass-static |
+| status menu/about | open menu and About | static source review; macOS smoke recommended | pass | source diff | qa | pass-static |
+| README/license | repository landing page | docs review | pass | rendered markdown/source diff | docs | pass |
+
+## QA Handoff - README/license/About/localization
+
+Status: `QA_PASS_WITH_MACOS_RUNTIME_LIMITATION`
+
+Static checks pass in this Linux container. Final visual/runtime smoke for the
+Settings language switch and About modal should be verified on macOS because
+AppKit cannot run here.
+
+## Follow-up: bilingual README structure
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Описание проекта должно быть на английском и русском.
+- README структурно должен быть сделан по аналогии с
+  `https://github.com/DenisLo-master/Dictation`.
+
+Acceptance criteria:
+
+- README содержит centered header с иконкой, badges и language links.
+- README содержит отдельные секции `English` и `Русский`.
+- Английская и русская секции зеркально покрывают screenshots, highlights,
+  download, requirements, install, privacy, build, tests, project status и
+  community/license/contact.
+- Условия free use / restricted reuse сохраняются и доступны из README.
+
+### Phase 10 - Bilingual README rewrite
+
+Status: `completed`
+
+Goal: привести README к структуре Dictation и сделать описание продукта
+двуязычным без изменения runtime-кода.
+
+Files/modules:
+
+- `README.md`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Переписан README с centered header, иконкой, badges и ссылками на языки.
+- Добавлены зеркальные English/Русский секции по структуре референса.
+- Сохранены build/install/signing/test/license/contact сведения LangConvert.
+
+Concrete checks:
+
+- `git diff --check` - pass.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| README bilingual structure | open repository landing page | docs review | pass | README diff | docs | pass |
