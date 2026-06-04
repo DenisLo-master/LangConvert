@@ -13,15 +13,16 @@ on:
 jobs:
   build-pkg:
     runs-on: macos-14
+    env:
+      APPLE_CERTIFICATES_P12_BASE64: ${{ secrets.APPLE_CERTIFICATES_P12_BASE64 }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Import Developer ID certificates
-        if: ${{ secrets.APPLE_CERTIFICATES_P12_BASE64 != '' }}
+        if: ${{ env.APPLE_CERTIFICATES_P12_BASE64 != '' }}
         env:
-          APPLE_CERTIFICATES_P12_BASE64: ${{ secrets.APPLE_CERTIFICATES_P12_BASE64 }}
           APPLE_CERTIFICATES_PASSWORD: ${{ secrets.APPLE_CERTIFICATES_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
@@ -37,11 +38,11 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
       - name: Build unsigned PKG
-        if: ${{ secrets.APPLE_CERTIFICATES_P12_BASE64 == '' }}
+        if: ${{ env.APPLE_CERTIFICATES_P12_BASE64 == '' }}
         run: bash scripts/package-macos.sh
 
       - name: Build signed and notarized PKG
-        if: ${{ secrets.APPLE_CERTIFICATES_P12_BASE64 != '' }}
+        if: ${{ env.APPLE_CERTIFICATES_P12_BASE64 != '' }}
         env:
           APP_SIGN_IDENTITY: ${{ secrets.APP_SIGN_IDENTITY }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
