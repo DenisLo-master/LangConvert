@@ -375,6 +375,50 @@ Concrete checks:
 - `git diff --check` - pass.
 - macOS GitHub Actions build and pkg commit - pending after push.
 
+## Follow-up: per-character layout conversion
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- Конвертация должна работать посимвольно в обе стороны.
+- Смешанная строка `fyfkbp ыныеуь` должна превращаться в `анализ system`.
+
+Acceptance criteria:
+
+- Каждый EN/JCUKEN символ конвертируется в RU.
+- Каждый RU/JCUKEN символ конвертируется в EN.
+- Символы без пары остаются без изменений.
+- Смешанные строки не выбирают одно направление для всей строки.
+
+### Phase 7 - Bidirectional per-character conversion
+
+Status: `completed`
+
+Goal: заменить majority-language conversion на per-character opposite-layout conversion.
+
+Files/modules:
+
+- `Sources/LangConvert/main.swift`
+- `scripts/test-layout-converter.py`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- `LayoutConverter.convert` теперь проверяет `enToRu[character]`, затем `ruToEn[character]`, затем оставляет символ как есть.
+- Добавлен lightweight Python self-test с кейсами `fyfkbp ыныеуь -> анализ system` и `руддщ ghbdtn -> hello привет`.
+
+Concrete checks:
+
+- `python3 scripts/test-layout-converter.py` - pending.
+- `bash -n scripts/package-macos.sh` - pending.
+- `git diff --check` - pending.
+- macOS GitHub Actions build and pkg commit - pending after push.
+
 ## Follow-up: reinstall replacement and icon refresh
 
 Status: `completed`

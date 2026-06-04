@@ -92,13 +92,9 @@ final class LayoutConverter {
     }
 
     func convert(_ text: String) -> String {
-        let cyrillic = text.unicodeScalars.filter { (0x0400...0x04FF).contains(Int($0.value)) }.count
-        let latin = text.unicodeScalars.filter {
-            (0x0041...0x005A).contains(Int($0.value)) || (0x0061...0x007A).contains(Int($0.value))
-        }.count
-        let map = cyrillic > latin ? ruToEn : enToRu
-
-        return String(text.map { map[$0] ?? $0 })
+        String(text.map { character in
+            enToRu[character] ?? ruToEn[character] ?? character
+        })
     }
 }
 
