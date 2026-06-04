@@ -379,6 +379,7 @@ final class GlobalHotKeyManager {
 final class HotKeyRecorderField: NSTextField {
     var onRecord: ((HotKey) -> Void)?
     private var keyMonitor: Any?
+    private var modifierSequence: UInt32 = 0
 
     override var acceptsFirstResponder: Bool { true }
     override var needsPanelToBecomeKey: Bool { true }
@@ -461,7 +462,14 @@ final class HotKeyRecorderField: NSTextField {
 
     private func recordModifierOnly(_ event: NSEvent) -> Bool {
         let modifiers = carbonModifiers(from: event.modifierFlags)
-        guard modifiers != 0 else { return false }
+        if modifiers == 0 {
+            modifierSequence = 0
+            return false
+        }
+
+        let isAddingModifier = modifiers & ~modifierSequence != 0
+        guard isAddingModifier else { return true }
+        modifierSequence = modifiers
 
         let hotKey = HotKey(
             keyCode: HotKey.modifierOnlyKeyCode,
