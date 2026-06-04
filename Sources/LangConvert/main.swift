@@ -253,26 +253,26 @@ enum AppText {
             let pair = names.prefix(2).joined(separator: " ↔ ")
             switch language {
             case .english:
-                return "System layouts: \(pair). Conversion works between the first two enabled layouts; keep only the needed pair in macOS."
+                return "System layouts: \(pair). Conversion works with any pair of macOS layouts; keep the needed pair first/enabled in Keyboard/Input Sources."
             case .russian:
-                return "Системные раскладки: \(pair). Конвертация работает между двумя добавленными раскладками; оставьте в системе только нужную пару."
+                return "Системные раскладки: \(pair). Конвертация работает с любой парой раскладок macOS; оставьте нужную пару первой/включенной в Keyboard/Input Sources."
             }
         }
 
         if names.count == 1 {
             switch language {
             case .english:
-                return "System layout: \(names[0]). Add a second layout in macOS Keyboard/Input Sources to convert between two locales."
+                return "System layout: \(names[0]). Add any second layout in macOS Keyboard/Input Sources to convert between that pair."
             case .russian:
-                return "Системная раскладка: \(names[0]). Добавьте вторую раскладку в macOS Keyboard/Input Sources, чтобы конвертация работала между двумя локалями."
+                return "Системная раскладка: \(names[0]). Добавьте любую вторую раскладку в macOS Keyboard/Input Sources, чтобы конвертация работала между этой парой."
             }
         }
 
         switch language {
         case .english:
-            return "Add two layouts in macOS Keyboard/Input Sources. LangConvert converts selected text between that system locale pair."
+            return "Add any two layouts in macOS Keyboard/Input Sources. LangConvert converts selected text between that system pair."
         case .russian:
-            return "Добавьте две раскладки в macOS Keyboard/Input Sources. LangConvert конвертирует выделенный текст между этой парой системных локалей."
+            return "Добавьте любые две раскладки в macOS Keyboard/Input Sources. LangConvert конвертирует выделенный текст между этой системной парой."
         }
     }
 
@@ -438,9 +438,7 @@ enum KeyboardLayoutProvider {
         let keyboardType = UInt32(LMGetKbdType())
         let modifiers: [UInt32] = [
             0,
-            UInt32(shiftKey),
-            UInt32(optionKey),
-            UInt32(shiftKey | optionKey)
+            UInt32(shiftKey)
         ]
         var result: [String: Character] = [:]
 

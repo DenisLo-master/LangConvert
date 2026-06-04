@@ -615,6 +615,88 @@ Static checks pass in this Linux container. Final visual/runtime smoke for the
 Settings language switch and About modal should be verified on macOS because
 AppKit cannot run here.
 
+## Follow-up: any system language pair and Option-layer conversion bug
+
+Status: `completed`
+
+### ТЗ от scribe
+
+Status: `SCRIBE_SCOPE_READY`
+
+Пользовательский scope:
+
+- В описании сделать акцент, что пара языков/раскладок может быть любой из
+  выбранных в системе.
+- Проверить, что функционал поддерживает любую пару системных раскладок.
+- Исправить баг: исходный текст `yflj d jgbcfybb cltkfnm frwbtyn`
+  конвертируется в `на¬о в опиçании ç¬елать акциент`, появляются непонятные
+  символы `¬` и `ç`.
+
+Root cause:
+
+- Dynamic conversion map строился по base, Shift, Option и Shift+Option слоям
+  keyboard layout.
+- Option-слои в macOS дают типографские/спецсимволы и могут перетирать обычные
+  base-letter mappings, например `l -> ¬` и `c -> ç`.
+
+Acceptance criteria:
+
+- README явно говорит, что LangConvert работает с любой парой системных
+  keyboard layouts/input sources, если macOS отдает их layout data.
+- Dynamic conversion map не использует Option/Alt слои для ordinary text
+  conversion.
+- Regression input `yflj d jgbcfybb cltkfnm frwbtyn` через EN/RU fallback дает
+  `надо в описании сделать акциент` без `¬` и `ç`.
+- Fallback EN/RU тесты остаются зелеными.
+
+### Phase 11 - System pair docs and Option-layer fix
+
+Status: `completed`
+
+Goal: убрать спецсимволы из dynamic conversion map и уточнить позиционирование
+продукта как конвертера любой системной пары раскладок.
+
+Files/modules:
+
+- `Sources/LangConvert/main.swift`
+- `scripts/test-layout-converter.py`
+- `README.md`
+- `docs/plans/macos-menu-bar-layout-converter.md`
+
+Implementation steps:
+
+- Исключить Option/Shift+Option modifier states из `KeyboardLayoutProvider`.
+- Добавить regression case в lightweight fallback converter test.
+- Обновить English/Russian README highlights/requirements/install wording.
+
+Concrete checks:
+
+- `python3 scripts/test-layout-converter.py` - pass.
+- `bash -n scripts/package-macos.sh` - pass.
+- `git diff --check` - pass.
+- `swift build` - not run in this Linux container because `swift` is unavailable.
+- `pnpm lint` / `pnpm build` - not run because this checkout has no
+  `package.json`.
+
+QA / Expert Coverage Matrix:
+
+| surface | trigger | required_agent_or_evidence | required_status | handoff_artifact | owner | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| dynamic layout map | convert text on macOS system layouts | source review; macOS smoke recommended | pass | source diff | qa | pass-static |
+| fallback regression | run converter self-test | automated test | pass | test output | qa | pass |
+| README any-pair positioning | open repository landing page | docs review | pass | README diff | docs | pass |
+
+## QA Handoff - any system pair and Option-layer bug
+
+Status: `QA_PASS_WITH_MACOS_RUNTIME_LIMITATION`
+
+The regression input `yflj d jgbcfybb cltkfnm frwbtyn` now passes through the
+fallback converter as `надо в описании сделать акциент`. Static source review
+confirms the dynamic macOS layout map uses only base and Shift layers, so
+Option/Alt special characters like `¬` and `ç` no longer overwrite ordinary
+letter mappings. Final dynamic layout smoke should still run on macOS with real
+system input sources.
+
 ## Follow-up: bilingual README structure
 
 Status: `completed`

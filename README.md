@@ -21,9 +21,9 @@
 ## English
 
 LangConvert is a lightweight native macOS status-bar app for converting selected
-text between keyboard layouts. It is built for the moment when text was typed
-with the wrong input source: select the text, press the hotkey, and LangConvert
-replaces it in place.
+text between any two keyboard layouts selected in the system. It is built for
+the moment when text was typed with the wrong input source: select the text,
+press the hotkey, and LangConvert replaces it in place.
 
 The app stays near the clock, has no Dock window, and focuses on one fast
 workflow: fix the selected text without opening a separate editor.
@@ -38,8 +38,8 @@ workflow: fix the selected text without opening a separate editor.
 
 | Area | What it does |
 | --- | --- |
-| Layout conversion | Converts selected text between the first two enabled macOS keyboard layouts. |
-| EN/RU fallback | Includes a QWERTY/JCUKEN fallback map for common Russian/English use. |
+| Any system pair | Converts selected text between the first two enabled macOS keyboard layouts, so the pair can be English/Russian, English/German, French/Spanish, or any other layouts macOS exposes. |
+| EN/RU fallback | Includes a QWERTY/JCUKEN fallback map for common Russian/English use when system layout data is unavailable. |
 | Global hotkeys | Lets you configure hotkeys for text conversion and system locale switching. |
 | Menu-bar UI | Runs near the clock with no Dock icon. |
 | Localized interface | Supports English and Russian UI from the settings window. |
@@ -64,8 +64,9 @@ configured.
 - Xcode Command Line Tools for building from source.
 - Accessibility permission so LangConvert can copy, replace, and restore
   selected text in the active app.
-- Two enabled keyboard input sources in macOS Keyboard/Input Sources for dynamic
-  conversion. If macOS does not expose them, LangConvert falls back to EN/RU.
+- Any two enabled keyboard input sources in macOS Keyboard/Input Sources for
+  dynamic conversion. LangConvert uses the first two layouts macOS exposes; if
+  layout data is unavailable, it falls back to EN/RU.
 
 ### Install
 
@@ -73,8 +74,10 @@ configured.
 2. Run the package on macOS.
 3. Open LangConvert from the status bar near the clock.
 4. Grant Accessibility permission when macOS asks.
-5. Open `Settings` and configure the conversion and locale-switch hotkeys.
-6. Select text in any app, press the conversion hotkey, and LangConvert replaces
+5. Keep the needed pair of keyboard layouts enabled in macOS Keyboard/Input
+   Sources.
+6. Open `Settings` and configure the conversion and locale-switch hotkeys.
+7. Select text in any app, press the conversion hotkey, and LangConvert replaces
    the selection.
 
 ### Privacy
@@ -164,9 +167,10 @@ Recommended next steps for wider distribution:
 ## Русский
 
 LangConvert - это легкое native macOS-приложение в панели статуса для
-конвертации выделенного текста между раскладками клавиатуры. Оно сделано для
-ситуации, когда текст был набран в неправильной раскладке: выделяете текст,
-нажимаете горячую клавишу, и LangConvert заменяет его на месте.
+конвертации выделенного текста между любыми двумя раскладками, выбранными в
+системе. Оно сделано для ситуации, когда текст был набран в неправильной
+раскладке: выделяете текст, нажимаете горячую клавишу, и LangConvert заменяет
+его на месте.
 
 Приложение живет рядом с часами, не показывает окно в Dock и решает один быстрый
 сценарий: исправить выделенный текст без отдельного редактора.
@@ -181,8 +185,8 @@ LangConvert - это легкое native macOS-приложение в пане�
 
 | Раздел | Что делает |
 | --- | --- |
-| Конвертация раскладки | Конвертирует выделенный текст между первыми двумя включенными раскладками macOS. |
-| EN/RU fallback | Содержит запасную QWERTY/JCUKEN-таблицу для русско-английского сценария. |
+| Любая системная пара | Конвертирует выделенный текст между первыми двумя включенными раскладками macOS: это может быть English/Russian, English/German, French/Spanish или любая другая пара, которую отдает macOS. |
+| EN/RU fallback | Содержит запасную QWERTY/JCUKEN-таблицу для русско-английского сценария, если системные layout data недоступны. |
 | Глобальные hotkeys | Позволяет настроить горячие клавиши конвертации текста и переключения системной локали. |
 | UI в панели статуса | Работает около часов, без иконки в Dock. |
 | Локализация интерфейса | Поддерживает английский и русский интерфейс в окне настроек. |
@@ -207,9 +211,10 @@ Apple notarization.
 - Xcode Command Line Tools для сборки из исходников.
 - Разрешение Accessibility, чтобы LangConvert мог копировать, заменять и
   восстанавливать выделенный текст в активном приложении.
-- Две включенные keyboard input sources в macOS Keyboard/Input Sources для
-  динамической конвертации. Если macOS не вернет эти данные, LangConvert
-  использует EN/RU fallback.
+- Любые две включенные keyboard input sources в macOS Keyboard/Input Sources
+  для динамической конвертации. LangConvert использует первые две раскладки,
+  которые отдает macOS; если layout data недоступны, используется EN/RU
+  fallback.
 
 ### Установка
 
@@ -217,8 +222,9 @@ Apple notarization.
 2. Запустите package на macOS.
 3. Откройте LangConvert из панели статуса около часов.
 4. Выдайте Accessibility permission, когда macOS попросит.
-5. Откройте `Настройки` и задайте hotkeys для конвертации и смены локали.
-6. Выделите текст в любом приложении, нажмите hotkey конвертации, и LangConvert
+5. Оставьте включенной нужную пару раскладок в macOS Keyboard/Input Sources.
+6. Откройте `Настройки` и задайте hotkeys для конвертации и смены локали.
+7. Выделите текст в любом приложении, нажмите hotkey конвертации, и LangConvert
    заменит выделение.
 
 ### Приватность
