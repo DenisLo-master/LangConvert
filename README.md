@@ -26,7 +26,7 @@ swift build -c release
 
 ## Build installer
 
-`productbuild` is available only on macOS. Without Developer ID signing and
+`pkgbuild` is available only on macOS. Without Developer ID signing and
 Apple notarization, Gatekeeper can block the installer on another Mac.
 
 ```bash
@@ -57,6 +57,6 @@ GitHub Actions secrets:
 - `APPLE_TEAM_ID`: 10-character Apple team ID.
 - `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for notarization.
 
-With those secrets present, the workflow signs the `.app`, signs the `.pkg`,
-submits it with `xcrun notarytool`, staples the ticket and verifies the package
-with `spctl`.
+With those secrets present, the workflow signs the `.app`, signs the `.pkg`
+with `pkgbuild --sign`, submits it with `xcrun notarytool`, staples the ticket
+and verifies the package with `spctl`.

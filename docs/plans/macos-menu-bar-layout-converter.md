@@ -21,7 +21,7 @@ Status: `BRAINSTORM_BRIEF_READY`
 Выбранное направление: Swift/AppKit status-bar utility без Electron, Chromium,
 Vite runtime и web UI. Это снижает размер итогового приложения и улучшает
 системную интеграцию. Цена решения: сборка `.pkg` требует macOS toolchain,
-потому что Apple `productbuild` доступен только на macOS.
+потому что Apple `pkgbuild` доступен только на macOS.
 
 ## ТЗ от scribe
 
@@ -64,7 +64,7 @@ AC9. Hotkey переключения локали вызывает систем�
 - macOS 13+.
 - Xcode Command Line Tools / Swift toolchain.
 - Accessibility permission для отправки CGEvent в другие приложения.
-- `productbuild` для `.pkg` installer.
+- `pkgbuild` для `.pkg` installer.
 
 ### Out of Scope
 
@@ -90,7 +90,7 @@ Status: `TDD_ACCEPTANCE_TESTS_READY`
 - `Package.swift` - native Swift executable package.
 - `Sources/LangConvert/main.swift` - AppKit app, status item, settings window, Carbon hotkeys, CGEvent automation, LaunchAgent autostart and EN/RU converter.
 - `packaging/Info.plist` - app bundle metadata with `LSUIElement=true`.
-- `scripts/package-macos.sh` - `.app` and `.pkg` packaging through `swift build` and `productbuild`.
+- `scripts/package-macos.sh` - `.app` and `.pkg` packaging through `swift build`, ad-hoc app signing, xattr cleanup and `pkgbuild`.
 - `.github/workflows/build-native-macos-pkg.yml` - macOS runner `.pkg` artifact build.
 
 ## Фазы
@@ -142,7 +142,7 @@ QA / Expert Coverage Matrix:
 | native runtime | AppKit status item and settings window | qa static review; macOS smoke required | pass | source review and checklist | qa | pass |
 | global hotkeys | Carbon hotkey registration | macOS smoke required | pass | manual macOS QA checklist | qa | pending-macos |
 | automation | Accessibility + CGEvent copy/paste | macOS smoke required | pass | manual macOS QA checklist | qa | pending-macos |
-| installer | `productbuild` `.pkg` | GitHub Actions macOS artifact | pass | `build-native-macos-pkg.yml` | team-lead | pending-ci |
+| installer | `pkgbuild` `.pkg` | GitHub Actions macOS artifact | pass | `build-native-macos-pkg.yml` | team-lead | pending-ci |
 | important readiness | native rewrite release risk | @feature-experts review | pass | approve with residual macOS smoke | feature-release-arbiter | pass |
 
 ## QA Handoff
@@ -150,7 +150,7 @@ QA / Expert Coverage Matrix:
 Status: `QA_PASS_WITH_MACOS_RUNTIME_LIMITATION`
 
 The implementation is native and contains no Electron/Chromium runtime. The
-Linux container cannot run Swift/AppKit or `productbuild`, so final runtime and
+Linux container cannot run Swift/AppKit or `pkgbuild`, so final runtime and
 installer verification must run on macOS.
 
 ## Feature Experts Review

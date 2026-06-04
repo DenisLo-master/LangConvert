@@ -8,6 +8,8 @@ CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 PKG_PATH="$BUILD_DIR/LangConvert.pkg"
+PKG_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/langconvert-pkg-root.XXXXXX")"
+PKG_SCRIPTS="$(mktemp -d "${TMPDIR:-/tmp}/langconvert-pkg-scripts.XXXXXX")"
 APP_SIGN_IDENTITY="${APP_SIGN_IDENTITY:-}"
 INSTALLER_SIGN_IDENTITY="${INSTALLER_SIGN_IDENTITY:-}"
 NOTARIZE="${NOTARIZE:-0}"
@@ -18,7 +20,7 @@ APPLE_APP_SPECIFIC_PASSWORD="${APPLE_APP_SPECIFIC_PASSWORD:-}"
 swift build -c release --package-path "$ROOT_DIR"
 
 rm -rf "$APP_DIR" "$PKG_PATH"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PKG_ROOT/Applications" "$PKG_SCRIPTS"
 
 cp "$ROOT_DIR/.build/release/LangConvert" "$MACOS_DIR/LangConvert"
 cp "$ROOT_DIR/packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
@@ -33,23 +35,80 @@ if [[ -n "$APP_SIGN_IDENTITY" ]]; then
     --timestamp \
     --sign "$APP_SIGN_IDENTITY" \
     "$APP_DIR"
+elif command -v codesign >/dev/null 2>&1; then
+  codesign --force --deep --sign - "$APP_DIR" >/dev/null
 else
-  echo "APP_SIGN_IDENTITY is not set; building an unsigned app for local testing."
+  echo "codesign is not available; building an unsigned app for local testing."
 fi
 
-PRODUCTBUILD_ARGS=(
-  --component "$APP_DIR" /Applications
-  --identifier app.langconvert.desktop.pkg
-  --version 0.1.0
+COPYFILE_DISABLE=1 COPY_EXTENDED_ATTRIBUTES_DISABLE=1 /usr/bin/ditto --norsrc --noextattr "$APP_DIR" "$PKG_ROOT/Applications/LangConvert.app"
+if command -v xattr >/dev/null 2>&1; then
+  xattr -cr "$PKG_ROOT"
+fi
+find "$PKG_ROOT" -name '._*' -delete
+
+cat > "$PKG_SCRIPTS/preinstall" <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+/usr/bin/osascript -e 'tell application id "app.langconvert.desktop" to quit' >/dev/null 2>&1 || true
+/bin/sleep 1
+/usr/bin/pkill -x LangConvert >/dev/null 2>&1 || true
+
+for app in \
+  "/Applications/LangConvert.app" \
+  /Applications/LangConvert\ [0-9]*.app \
+  /Applications/LangConvert\ copy*.app \
+  /Applications/LangConvert\ копия*.app
+do
+  if [ -e "$app" ]; then
+    /bin/rm -rf "$app"
+  fi
+done
+
+exit 0
+SCRIPT
+
+cat > "$PKG_SCRIPTS/postinstall" <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+APP_PATH="/Applications/LangConvert.app"
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
+/usr/bin/touch "$APP_PATH" || true
+if [ -x "$LSREGISTER" ]; then
+  "$LSREGISTER" -f "$APP_PATH" >/dev/null 2>&1 || true
+fi
+/usr/bin/qlmanage -r cache >/dev/null 2>&1 || true
+
+logged_in_user="$(/usr/bin/stat -f %Su /dev/console)"
+if [ -n "$logged_in_user" ] && [ "$logged_in_user" != "root" ]; then
+  user_id="$(/usr/bin/id -u "$logged_in_user")"
+  /bin/launchctl asuser "$user_id" /usr/bin/osascript -e 'tell application "Finder" to update POSIX file "/Applications/LangConvert.app"' >/dev/null 2>&1 || true
+  /bin/launchctl asuser "$user_id" /usr/bin/open -a "$APP_PATH" >/dev/null 2>&1 || true
+fi
+
+exit 0
+SCRIPT
+
+chmod +x "$PKG_SCRIPTS/preinstall" "$PKG_SCRIPTS/postinstall"
+
+PKGBUILD_ARGS=(
+  --root "$PKG_ROOT"
+  --scripts "$PKG_SCRIPTS"
+  --install-location "/"
+  --identifier "app.langconvert.desktop.pkg"
+  --version "0.1.0"
 )
 
 if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
-  PRODUCTBUILD_ARGS+=(--sign "$INSTALLER_SIGN_IDENTITY")
+  PKGBUILD_ARGS+=(--sign "$INSTALLER_SIGN_IDENTITY")
 else
   echo "INSTALLER_SIGN_IDENTITY is not set; building an unsigned pkg for local testing."
 fi
 
-productbuild "${PRODUCTBUILD_ARGS[@]}" "$PKG_PATH"
+COPYFILE_DISABLE=1 COPY_EXTENDED_ATTRIBUTES_DISABLE=1 pkgbuild "${PKGBUILD_ARGS[@]}" "$PKG_PATH"
 
 if [[ "$NOTARIZE" == "1" ]]; then
   if [[ -z "$APPLE_ID" || -z "$APPLE_TEAM_ID" || -z "$APPLE_APP_SPECIFIC_PASSWORD" ]]; then
@@ -68,3 +127,5 @@ if [[ "$NOTARIZE" == "1" ]]; then
 fi
 
 echo "$PKG_PATH"
+
+rm -rf "$PKG_ROOT" "$PKG_SCRIPTS" "$APP_DIR" 2>/dev/null || true
