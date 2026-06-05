@@ -343,14 +343,83 @@ final class LayoutConverter {
     }
 
     func convert(_ text: String) -> String {
-        if let systemMap = KeyboardLayoutProvider.conversionMap() {
-            return String(text.map { systemMap[$0] ?? $0 })
+        let fallbackMaps = LayoutConversionMaps(forward: enToRu, reverse: ruToEn)
+
+        if let systemMaps = KeyboardLayoutProvider.conversionMaps(fallbackMaps: fallbackMaps) {
+            return convert(text, using: systemMaps)
         }
 
-        return String(text.map { character in
-            enToRu[character] ?? ruToEn[character] ?? character
+        return convert(text, using: fallbackMaps)
+    }
+
+    private func convert(_ text: String, using maps: LayoutConversionMaps) -> String {
+        let characters = Array(text)
+        return String(characters.enumerated().map { index, character in
+            let forward = maps.forward[character]
+            let reverse = maps.reverse[character]
+
+            switch (forward, reverse) {
+            case let (forward?, nil):
+                return forward
+            case let (nil, reverse?):
+                return reverse
+            case let (forward?, reverse?):
+                return preferredDirection(at: index, in: characters, using: maps) == .reverse ? reverse : forward
+            case (nil, nil):
+                return character
+            }
         })
     }
+
+    private func preferredDirection(
+        at index: Int,
+        in characters: [Character],
+        using maps: LayoutConversionMaps
+    ) -> LayoutConversionDirection {
+        for distance in 1..<max(characters.count, 1) {
+            if index - distance >= 0,
+               let direction = unambiguousDirection(for: characters[index - distance], using: maps)
+            {
+                return direction
+            }
+
+            if index + distance < characters.count,
+               let direction = unambiguousDirection(for: characters[index + distance], using: maps)
+            {
+                return direction
+            }
+        }
+
+        return .forward
+    }
+
+    private func unambiguousDirection(
+        for character: Character,
+        using maps: LayoutConversionMaps
+    ) -> LayoutConversionDirection? {
+        let hasForward = maps.forward[character] != nil
+        let hasReverse = maps.reverse[character] != nil
+
+        if hasForward && !hasReverse {
+            return .forward
+        }
+
+        if hasReverse && !hasForward {
+            return .reverse
+        }
+
+        return nil
+    }
+}
+
+fileprivate struct LayoutConversionMaps {
+    let forward: [Character: Character]
+    let reverse: [Character: Character]
+}
+
+fileprivate enum LayoutConversionDirection {
+    case forward
+    case reverse
 }
 
 enum AccessibilityPermission {
@@ -368,6 +437,7 @@ enum AccessibilityPermission {
 struct KeyboardLayoutInfo {
     let name: String
     let identifier: String
+    let languages: [String]
 }
 
 enum KeyboardLayoutProvider {
@@ -381,21 +451,27 @@ enum KeyboardLayoutProvider {
         enabledKeyboardSources().map(\.info)
     }
 
-    static func conversionMap() -> [Character: Character]? {
-        let sources = Array(enabledKeyboardSources().prefix(2))
+    fileprivate static func conversionMaps(fallbackMaps: LayoutConversionMaps) -> LayoutConversionMaps? {
+        let enabledSources = enabledKeyboardSources()
+        let sources = preferredConversionSources(from: enabledSources)
         guard sources.count == 2 else { return nil }
 
-        var result: [Character: Character] = [:]
+        if isEnglishRussianPair(sources) {
+            return fallbackMaps
+        }
+
+        var forward: [Character: Character] = [:]
+        var reverse: [Character: Character] = [:]
         let first = characterMap(for: sources[0])
         let second = characterMap(for: sources[1])
 
         for (key, firstCharacter) in first {
             guard let secondCharacter = second[key], firstCharacter != secondCharacter else { continue }
-            result[firstCharacter] = secondCharacter
-            result[secondCharacter] = firstCharacter
+            forward[firstCharacter] = secondCharacter
+            reverse[secondCharacter] = firstCharacter
         }
 
-        return result.isEmpty ? nil : result
+        return forward.isEmpty || reverse.isEmpty ? nil : LayoutConversionMaps(forward: forward, reverse: reverse)
     }
 
     private static func enabledKeyboardSources() -> [LayoutSource] {
@@ -416,15 +492,52 @@ enum KeyboardLayoutProvider {
             }
             return LayoutSource(
                 source: source,
-                info: KeyboardLayoutInfo(name: name, identifier: identifier),
+                info: KeyboardLayoutInfo(
+                    name: name,
+                    identifier: identifier,
+                    languages: stringArrayProperty(source, kTISPropertyInputSourceLanguages)
+                ),
                 layoutData: layoutData
             )
         }
     }
 
+    private static func preferredConversionSources(from sources: [LayoutSource]) -> [LayoutSource] {
+        guard sources.count > 2 else { return Array(sources.prefix(2)) }
+
+        for firstIndex in sources.indices {
+            let firstLanguage = primaryLanguage(for: sources[firstIndex])
+
+            for secondIndex in sources.indices where secondIndex > firstIndex {
+                let secondLanguage = primaryLanguage(for: sources[secondIndex])
+
+                if firstLanguage == nil || secondLanguage == nil || firstLanguage != secondLanguage {
+                    return [sources[firstIndex], sources[secondIndex]]
+                }
+            }
+        }
+
+        return Array(sources.prefix(2))
+    }
+
+    private static func primaryLanguage(for source: LayoutSource) -> String? {
+        source.info.languages.first?.split(separator: "-").first.map(String.init)
+    }
+
+    private static func isEnglishRussianPair(_ sources: [LayoutSource]) -> Bool {
+        let languages = Set(sources.compactMap(primaryLanguage))
+        return languages.contains("en") && languages.contains("ru")
+    }
+
     private static func property(_ source: TISInputSource, _ key: CFString) -> String? {
         guard let value = TISGetInputSourceProperty(source, key) else { return nil }
         return unsafeBitCast(value, to: CFString.self) as String
+    }
+
+    private static func stringArrayProperty(_ source: TISInputSource, _ key: CFString) -> [String] {
+        guard let value = TISGetInputSourceProperty(source, key) else { return [] }
+        let array = unsafeBitCast(value, to: NSArray.self)
+        return array.compactMap { $0 as? String }
     }
 
     private static func dataProperty(_ source: TISInputSource, _ key: CFString) -> CFData? {

@@ -56,7 +56,29 @@ git submodule, install step, build step или CI requirement. Его налич
 
 ## Правила Проекта
 
-1. Проект использует `pnpm`, Vite, React и TypeScript.
+1. Проект использует Swift Package Manager, Swift, AppKit и macOS-only APIs
+   (`AppKit`, `Carbon`, `pkgbuild`, `iconutil`).
 2. Перед финальным ответом по изменению кода или документации выполняй доступные проверки.
 3. Для markdown/documentation-only изменений минимум: `git diff --check`.
-4. Для code changes добавляй релевантные команды проекта: `pnpm lint` и `pnpm build`, если зависимости установлены.
+4. Для code changes добавляй релевантные команды проекта:
+   `python3 scripts/test-layout-converter.py`, `bash -n scripts/package-macos.sh`,
+   `git diff --check` и `swift build`, если в среде доступен Swift toolchain.
+5. `build/LangConvert.pkg` не собирается и не обновляется вручную в Linux/Codex
+   среде. Актуальный dist-пакет собирается через GitHub Actions workflow
+   `.github/workflows/build-native-macos-pkg.yml` на `macos-14`.
+6. Для обновления `build/LangConvert.pkg` после code changes нужно запушить
+   обычный code commit в `main` или ветку `codex/**` без маркера
+   `[skip pkg commit]`. Workflow выполнит `bash scripts/package-macos.sh`,
+   загрузит artifact `LangConvert-native-macOS-pkg` и отдельным коммитом
+   `Add built macOS pkg [skip pkg commit]` обновит `build/LangConvert.pkg`
+   в той же ветке.
+7. Не коммить старый `build/LangConvert.pkg` как новый dist, если локальная
+   macOS-сборка не выполнялась. Если `git push` заблокирован авторизацией,
+   явно сообщи, что code commit готов локально, но dist не может обновиться до
+   успешного push и запуска GitHub Actions.
+8. В текущем Codex workspace для push/fetch в GitHub-репозиторий
+   `DenisLo-master/LangConvert` доступен deploy key:
+   `/home/codex/.ssh/innovat_deploy_key_ed25519`. При необходимости используй
+   его через `GIT_SSH_COMMAND="ssh -i ~/.ssh/innovat_deploy_key_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"`
+   или локальный `core.sshCommand`. Не добавляй этот ключ как зависимость
+   продукта, install step, build step или CI requirement.
