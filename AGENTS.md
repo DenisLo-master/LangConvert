@@ -76,3 +76,9 @@ git submodule, install step, build step или CI requirement. Его налич
    macOS-сборка не выполнялась. Если `git push` заблокирован авторизацией,
    явно сообщи, что code commit готов локально, но dist не может обновиться до
    успешного push и запуска GitHub Actions.
+8. В текущем Codex workspace для push/fetch в GitHub-репозиторий
+   `DenisLo-master/LangConvert` доступен deploy key:
+   `/home/codex/.ssh/innovat_deploy_key_ed25519`. При необходимости используй
+   его через `GIT_SSH_COMMAND="ssh -i ~/.ssh/innovat_deploy_key_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"`
+   или локальный `core.sshCommand`. Не добавляй этот ключ как зависимость
+   продукта, install step, build step или CI requirement.
