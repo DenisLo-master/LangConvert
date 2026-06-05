@@ -343,11 +343,13 @@ final class LayoutConverter {
     }
 
     func convert(_ text: String) -> String {
-        if let systemMaps = KeyboardLayoutProvider.conversionMaps() {
+        let fallbackMaps = LayoutConversionMaps(forward: enToRu, reverse: ruToEn)
+
+        if let systemMaps = KeyboardLayoutProvider.conversionMaps(fallbackMaps: fallbackMaps) {
             return convert(text, using: systemMaps)
         }
 
-        return convert(text, using: LayoutConversionMaps(forward: enToRu, reverse: ruToEn))
+        return convert(text, using: fallbackMaps)
     }
 
     private func convert(_ text: String, using maps: LayoutConversionMaps) -> String {
@@ -435,6 +437,7 @@ enum AccessibilityPermission {
 struct KeyboardLayoutInfo {
     let name: String
     let identifier: String
+    let languages: [String]
 }
 
 enum KeyboardLayoutProvider {
@@ -448,9 +451,14 @@ enum KeyboardLayoutProvider {
         enabledKeyboardSources().map(\.info)
     }
 
-    fileprivate static func conversionMaps() -> LayoutConversionMaps? {
-        let sources = Array(enabledKeyboardSources().prefix(2))
+    fileprivate static func conversionMaps(fallbackMaps: LayoutConversionMaps) -> LayoutConversionMaps? {
+        let enabledSources = enabledKeyboardSources()
+        let sources = preferredConversionSources(from: enabledSources)
         guard sources.count == 2 else { return nil }
+
+        if isEnglishRussianPair(sources) {
+            return fallbackMaps
+        }
 
         var forward: [Character: Character] = [:]
         var reverse: [Character: Character] = [:]
@@ -484,15 +492,52 @@ enum KeyboardLayoutProvider {
             }
             return LayoutSource(
                 source: source,
-                info: KeyboardLayoutInfo(name: name, identifier: identifier),
+                info: KeyboardLayoutInfo(
+                    name: name,
+                    identifier: identifier,
+                    languages: stringArrayProperty(source, kTISPropertyInputSourceLanguages)
+                ),
                 layoutData: layoutData
             )
         }
     }
 
+    private static func preferredConversionSources(from sources: [LayoutSource]) -> [LayoutSource] {
+        guard sources.count > 2 else { return Array(sources.prefix(2)) }
+
+        for firstIndex in sources.indices {
+            let firstLanguage = primaryLanguage(for: sources[firstIndex])
+
+            for secondIndex in sources.indices where secondIndex > firstIndex {
+                let secondLanguage = primaryLanguage(for: sources[secondIndex])
+
+                if firstLanguage == nil || secondLanguage == nil || firstLanguage != secondLanguage {
+                    return [sources[firstIndex], sources[secondIndex]]
+                }
+            }
+        }
+
+        return Array(sources.prefix(2))
+    }
+
+    private static func primaryLanguage(for source: LayoutSource) -> String? {
+        source.info.languages.first?.split(separator: "-").first.map(String.init)
+    }
+
+    private static func isEnglishRussianPair(_ sources: [LayoutSource]) -> Bool {
+        let languages = Set(sources.compactMap(primaryLanguage))
+        return languages.contains("en") && languages.contains("ru")
+    }
+
     private static func property(_ source: TISInputSource, _ key: CFString) -> String? {
         guard let value = TISGetInputSourceProperty(source, key) else { return nil }
         return unsafeBitCast(value, to: CFString.self) as String
+    }
+
+    private static func stringArrayProperty(_ source: TISInputSource, _ key: CFString) -> [String] {
+        guard let value = TISGetInputSourceProperty(source, key) else { return [] }
+        let array = unsafeBitCast(value, to: NSArray.self)
+        return array.compactMap { $0 as? String }
     }
 
     private static func dataProperty(_ source: TISInputSource, _ key: CFString) -> CFData? {
