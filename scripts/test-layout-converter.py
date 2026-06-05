@@ -26,6 +26,7 @@ def convert(value):
 cases = {
     "fyfkbp ыныеуь": "анализ system",
     "руддщ ghbdtn": "hello привет",
+    "yflj d jgbcfybb cltkfnm frwbtyn": "надо в описании сделать акциент",
 }
 
 for source, expected in cases.items():

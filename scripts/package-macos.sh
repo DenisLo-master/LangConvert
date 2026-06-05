@@ -117,7 +117,7 @@ PKGBUILD_ARGS=(
   --scripts "$PKG_SCRIPTS"
   --install-location "/"
   --identifier "app.langconvert.desktop.pkg"
-  --version "0.1.5"
+  --version "0.1.7"
 )
 
 if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
