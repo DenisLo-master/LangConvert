@@ -343,14 +343,81 @@ final class LayoutConverter {
     }
 
     func convert(_ text: String) -> String {
-        if let systemMap = KeyboardLayoutProvider.conversionMap() {
-            return String(text.map { systemMap[$0] ?? $0 })
+        if let systemMaps = KeyboardLayoutProvider.conversionMaps() {
+            return convert(text, using: systemMaps)
         }
 
-        return String(text.map { character in
-            enToRu[character] ?? ruToEn[character] ?? character
+        return convert(text, using: LayoutConversionMaps(forward: enToRu, reverse: ruToEn))
+    }
+
+    private func convert(_ text: String, using maps: LayoutConversionMaps) -> String {
+        let characters = Array(text)
+        return String(characters.enumerated().map { index, character in
+            let forward = maps.forward[character]
+            let reverse = maps.reverse[character]
+
+            switch (forward, reverse) {
+            case let (forward?, nil):
+                return forward
+            case let (nil, reverse?):
+                return reverse
+            case let (forward?, reverse?):
+                return preferredDirection(at: index, in: characters, using: maps) == .reverse ? reverse : forward
+            case (nil, nil):
+                return character
+            }
         })
     }
+
+    private func preferredDirection(
+        at index: Int,
+        in characters: [Character],
+        using maps: LayoutConversionMaps
+    ) -> LayoutConversionDirection {
+        for distance in 1..<max(characters.count, 1) {
+            if index - distance >= 0,
+               let direction = unambiguousDirection(for: characters[index - distance], using: maps)
+            {
+                return direction
+            }
+
+            if index + distance < characters.count,
+               let direction = unambiguousDirection(for: characters[index + distance], using: maps)
+            {
+                return direction
+            }
+        }
+
+        return .forward
+    }
+
+    private func unambiguousDirection(
+        for character: Character,
+        using maps: LayoutConversionMaps
+    ) -> LayoutConversionDirection? {
+        let hasForward = maps.forward[character] != nil
+        let hasReverse = maps.reverse[character] != nil
+
+        if hasForward && !hasReverse {
+            return .forward
+        }
+
+        if hasReverse && !hasForward {
+            return .reverse
+        }
+
+        return nil
+    }
+}
+
+fileprivate struct LayoutConversionMaps {
+    let forward: [Character: Character]
+    let reverse: [Character: Character]
+}
+
+fileprivate enum LayoutConversionDirection {
+    case forward
+    case reverse
 }
 
 enum AccessibilityPermission {
@@ -381,21 +448,22 @@ enum KeyboardLayoutProvider {
         enabledKeyboardSources().map(\.info)
     }
 
-    static func conversionMap() -> [Character: Character]? {
+    fileprivate static func conversionMaps() -> LayoutConversionMaps? {
         let sources = Array(enabledKeyboardSources().prefix(2))
         guard sources.count == 2 else { return nil }
 
-        var result: [Character: Character] = [:]
+        var forward: [Character: Character] = [:]
+        var reverse: [Character: Character] = [:]
         let first = characterMap(for: sources[0])
         let second = characterMap(for: sources[1])
 
         for (key, firstCharacter) in first {
             guard let secondCharacter = second[key], firstCharacter != secondCharacter else { continue }
-            result[firstCharacter] = secondCharacter
-            result[secondCharacter] = firstCharacter
+            forward[firstCharacter] = secondCharacter
+            reverse[secondCharacter] = firstCharacter
         }
 
-        return result.isEmpty ? nil : result
+        return forward.isEmpty || reverse.isEmpty ? nil : LayoutConversionMaps(forward: forward, reverse: reverse)
     }
 
     private static func enabledKeyboardSources() -> [LayoutSource] {

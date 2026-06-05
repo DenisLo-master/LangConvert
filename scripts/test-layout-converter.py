@@ -20,13 +20,60 @@ ru_to_en = {ru: en for en, ru in pairs}
 
 
 def convert(value):
-    return "".join(en_to_ru.get(char) or ru_to_en.get(char) or char for char in value)
+    result = []
+    chars = list(value)
+
+    for index, char in enumerate(chars):
+        forward = en_to_ru.get(char)
+        reverse = ru_to_en.get(char)
+
+        if forward and not reverse:
+            result.append(forward)
+        elif reverse and not forward:
+            result.append(reverse)
+        elif forward and reverse:
+            result.append(reverse if preferred_direction(index, chars) == "reverse" else forward)
+        else:
+            result.append(char)
+
+    return "".join(result)
+
+
+def preferred_direction(index, chars):
+    for distance in range(1, max(len(chars), 1)):
+        before = index - distance
+        after = index + distance
+
+        if before >= 0:
+            direction = unambiguous_direction(chars[before])
+            if direction:
+                return direction
+
+        if after < len(chars):
+            direction = unambiguous_direction(chars[after])
+            if direction:
+                return direction
+
+    return "forward"
+
+
+def unambiguous_direction(char):
+    has_forward = char in en_to_ru
+    has_reverse = char in ru_to_en
+
+    if has_forward and not has_reverse:
+        return "forward"
+    if has_reverse and not has_forward:
+        return "reverse"
+    return None
 
 
 cases = {
     "fyfkbp ыныеуь": "анализ system",
     "руддщ ghbdtn": "hello привет",
     "yflj d jgbcfybb cltkfnm frwbtyn": "надо в описании сделать акциент",
+    ",b,kbjntrf": "библиотека",
+    "текст,": "ntrcn?",
 }
 
 for source, expected in cases.items():
