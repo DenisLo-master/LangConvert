@@ -1,0 +1,77 @@
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version-589446694DF107B7.txt
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[3/5] Emitting module LangConvertCoreTests
+[4/5] Compiling LangConvertCoreTests InputOperationAcceptanceTests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[5/12] /workspace/LangConvert/.build/x86_64-unknown-linux-gnu/debug/LangConvertPackageDiscoveredTests.derived/all-discovered-tests.swift
+[6/13] Write sources
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[7/13] Wrapping AST for LangConvertCoreTests for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[9/16] Compiling LangConvertPackageDiscoveredTests all-discovered-tests.swift
+[10/16] Emitting module LangConvertPackageDiscoveredTests
+[11/16] Compiling LangConvertPackageDiscoveredTests LangConvertCoreTests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[12/17] /workspace/LangConvert/.build/x86_64-unknown-linux-gnu/debug/LangConvertPackageTests.derived/runner.swift
+[13/18] Write sources
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[14/18] Wrapping AST for LangConvertPackageDiscoveredTests for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[16/20] Emitting module LangConvertPackageTests
+[17/20] Compiling LangConvertPackageTests runner.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[18/20] Write Objects.LinkFileList
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[19/20] Linking LangConvertPackageTests.xctest
+Build complete! (3.95s)
+Test Suite 'Selected tests' started at 2026-09-07 13:00:58.821
+Test Suite 'InputOperationAcceptanceTests' started at 2026-09-07 13:00:58.823
+Test Case 'InputOperationAcceptanceTests.testAlreadyActiveAndNeutralTextDoNotToggle' started at 2026-09-07 13:00:58.823
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:91: error: InputOperationAcceptanceTests.testAlreadyActiveAndNeutralTextDoNotToggle : XCTAssertEqual failed: ("converted") is not equal to ("convertedAndSwitched") -
+Test Case 'InputOperationAcceptanceTests.testAlreadyActiveAndNeutralTextDoNotToggle' failed (0.002 seconds)
+Test Case 'InputOperationAcceptanceTests.testBaselineReplacement' started at 2026-09-07 13:00:58.825
+Test Case 'InputOperationAcceptanceTests.testBaselineReplacement' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed' started at 2026-09-07 13:00:58.826
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:171: error: InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed : XCTAssertEqual failed: ("nil") is not equal to ("Optional(LangConvertCore.InputOperationResult.busy)") -
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:172: error: InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed : XCTAssertEqual failed: ("converted") is not equal to ("convertedAndSwitched") - 
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:175: error: InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed : XCTAssertEqual failed: ("switchUnconfirmed") is not equal to ("switched") -
+Test Case 'InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testConvertsAndSelectsResultSource' started at 2026-09-07 13:00:58.827
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:57: error: InputOperationAcceptanceTests.testConvertsAndSelectsResultSource : XCTAssertEqual failed: ("Optional("en")") is not equal to ("Optional("ru")") - 
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:58: error: InputOperationAcceptanceTests.testConvertsAndSelectsResultSource : XCTAssertEqual failed: ("converted") is not equal to ("convertedAndSwitched") -
+Test Case 'InputOperationAcceptanceTests.testConvertsAndSelectsResultSource' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testFailureAndNoSelectionNeverSwitch' started at 2026-09-07 13:00:58.827
+Test Case 'InputOperationAcceptanceTests.testFailureAndNoSelectionNeverSwitch' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testFocusLossAfterConfirmedReplacementIsPartial' started at 2026-09-07 13:00:58.828
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:137: error: InputOperationAcceptanceTests.testFocusLossAfterConfirmedReplacementIsPartial : XCTAssertEqual failed: ("converted") is not equal to ("convertedSourceUnconfirmed") -
+Test Case 'InputOperationAcceptanceTests.testFocusLossAfterConfirmedReplacementIsPartial' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testFocusLossBeforeReplacementCancels' started at 2026-09-07 13:00:58.828
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:128: error: InputOperationAcceptanceTests.testFocusLossBeforeReplacementCancels : XCTAssertEqual failed: ("converted") is not equal to ("contextChanged") - 
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:129: error: InputOperationAcceptanceTests.testFocusLossBeforeReplacementCancels : XCTAssertEqual failed: ("привет") is not equal to ("ghbdtn") -
+Test Case 'InputOperationAcceptanceTests.testFocusLossBeforeReplacementCancels' failed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime' started at 2026-09-07 13:00:58.829
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:66: error: InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime : XCTAssertEqual failed: ("switchUnconfirmed") is not equal to ("switched") - 
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:67: error: InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime : XCTAssertEqual failed: ("Optional("ru")") is not equal to ("Optional("en")") - 
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:70: error: InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime : XCTAssertEqual failed: ("Optional("ru")") is not equal to ("Optional("en")") -
+Test Case 'InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testOutsidePairAndIncompletePairDoNotGuess' started at 2026-09-07 13:00:58.830
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:77: error: InputOperationAcceptanceTests.testOutsidePairAndIncompletePairDoNotGuess : XCTAssertEqual failed: ("switchUnconfirmed") is not equal to ("sourceUnavailable") -
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:82: error: InputOperationAcceptanceTests.testOutsidePairAndIncompletePairDoNotGuess : XCTAssertEqual failed: ("switchUnconfirmed") is not equal to ("sourceUnavailable") -
+Test Case 'InputOperationAcceptanceTests.testOutsidePairAndIncompletePairDoNotGuess' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testSelectRequestIsNotConfirmationAndIsNotRetried' started at 2026-09-07 13:00:58.830
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:157: error: InputOperationAcceptanceTests.testSelectRequestIsNotConfirmationAndIsNotRetried : XCTAssertEqual failed: ("Optional("en")") is not equal to ("Optional("fr")") -
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:158: error: InputOperationAcceptanceTests.testSelectRequestIsNotConfirmationAndIsNotRetried : XCTAssertEqual failed: ("[]") is not equal to ("["ru"]") -
+Test Case 'InputOperationAcceptanceTests.testSelectRequestIsNotConfirmationAndIsNotRetried' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testSourceFailureAfterReplacementIsPartial' started at 2026-09-07 13:00:58.831
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:146: error: InputOperationAcceptanceTests.testSourceFailureAfterReplacementIsPartial : XCTAssertEqual failed: ("converted") is not equal to ("convertedSourceUnconfirmed") -
+Test Case 'InputOperationAcceptanceTests.testSourceFailureAfterReplacementIsPartial' failed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testUnconfirmedReplacementNeverSwitches' started at 2026-09-07 13:00:58.831
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:104: error: InputOperationAcceptanceTests.testUnconfirmedReplacementNeverSwitches : XCTAssertEqual failed: ("converted") is not equal to ("replacementUnconfirmed") -
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:109: error: InputOperationAcceptanceTests.testUnconfirmedReplacementNeverSwitches : XCTAssertEqual failed: ("converted") is not equal to ("replacementUnconfirmed") -
+Test Case 'InputOperationAcceptanceTests.testUnconfirmedReplacementNeverSwitches' failed (0.001 seconds)
+Test Suite 'InputOperationAcceptanceTests' failed at 2026-09-07 13:00:58.832
+	 Executed 12 tests, with 19 failures (0 unexpected) in 0.008 (0.008) seconds
+Test Suite 'Selected tests' failed at 2026-09-07 13:00:58.832
+	 Executed 12 tests, with 19 failures (0 unexpected) in 0.008 (0.008) seconds

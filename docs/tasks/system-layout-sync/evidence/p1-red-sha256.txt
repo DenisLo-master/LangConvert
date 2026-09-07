@@ -1,0 +1,2 @@
+cf278217d77b3de664560aa4f3b6e483769b0d6242f623974f3c6962ea7ed789  Sources/LangConvertCore/Conversion.swift
+4732da5474af7b1e460e892c1e745ec267eacad53a81f0983563e38aa8a80ba6  Tests/LangConvertCoreTests/ConversionAcceptanceTests.swift

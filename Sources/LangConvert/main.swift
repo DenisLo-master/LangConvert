@@ -1,3 +1,4 @@
+import LangConvertCore
 import AppKit
 import ApplicationServices
 import Carbon
@@ -138,8 +139,8 @@ enum AppText {
 
     static func switchLocaleHotKey(_ language: AppLanguage) -> String {
         switch language {
-        case .english: "Switch system locale"
-        case .russian: "Переключение системной локали"
+        case .english: "Switch keyboard layout"
+        case .russian: "Переключение раскладки"
         }
     }
 
@@ -192,13 +193,6 @@ enum AppText {
         }
     }
 
-    static func localeSwitchRequested(_ language: AppLanguage) -> String {
-        switch language {
-        case .english: "Locale switch requested."
-        case .russian: "Запрошено переключение локали."
-        }
-    }
-
     static func convertHotKeySaved(_ language: AppLanguage) -> String {
         switch language {
         case .english: "Convert hotkey saved."
@@ -208,8 +202,8 @@ enum AppText {
 
     static func switchLocaleHotKeySaved(_ language: AppLanguage) -> String {
         switch language {
-        case .english: "Locale switch hotkey saved."
-        case .russian: "Горячая клавиша переключения локали сохранена."
+        case .english: "Layout switch hotkey saved."
+        case .russian: "Горячая клавиша переключения раскладки сохранена."
         }
     }
 
@@ -317,111 +311,6 @@ final class SettingsStore {
     }
 }
 
-final class LayoutConverter {
-    private let enToRu: [Character: Character]
-    private let ruToEn: [Character: Character]
-
-    init() {
-        let pairs: [(Character, Character)] = [
-            ("`", "ё"), ("q", "й"), ("w", "ц"), ("e", "у"), ("r", "к"), ("t", "е"),
-            ("y", "н"), ("u", "г"), ("i", "ш"), ("o", "щ"), ("p", "з"), ("[", "х"),
-            ("]", "ъ"), ("a", "ф"), ("s", "ы"), ("d", "в"), ("f", "а"), ("g", "п"),
-            ("h", "р"), ("j", "о"), ("k", "л"), ("l", "д"), (";", "ж"), ("'", "э"),
-            ("z", "я"), ("x", "ч"), ("c", "с"), ("v", "м"), ("b", "и"), ("n", "т"),
-            ("m", "ь"), (",", "б"), (".", "ю"), ("/", "."),
-            ("~", "Ё"), ("Q", "Й"), ("W", "Ц"), ("E", "У"), ("R", "К"), ("T", "Е"),
-            ("Y", "Н"), ("U", "Г"), ("I", "Ш"), ("O", "Щ"), ("P", "З"), ("{", "Х"),
-            ("}", "Ъ"), ("A", "Ф"), ("S", "Ы"), ("D", "В"), ("F", "А"), ("G", "П"),
-            ("H", "Р"), ("J", "О"), ("K", "Л"), ("L", "Д"), (":", "Ж"), ("\"", "Э"),
-            ("Z", "Я"), ("X", "Ч"), ("C", "С"), ("V", "М"), ("B", "И"), ("N", "Т"),
-            ("M", "Ь"), ("<", "Б"), (">", "Ю"), ("?", ","), ("@", "\""), ("#", "№"),
-            ("$", ";"), ("^", ":"), ("&", "?")
-        ]
-
-        self.enToRu = Dictionary(uniqueKeysWithValues: pairs)
-        self.ruToEn = Dictionary(uniqueKeysWithValues: pairs.map { ($0.1, $0.0) })
-    }
-
-    func convert(_ text: String) -> String {
-        let fallbackMaps = LayoutConversionMaps(forward: enToRu, reverse: ruToEn)
-
-        if let systemMaps = KeyboardLayoutProvider.conversionMaps(fallbackMaps: fallbackMaps) {
-            return convert(text, using: systemMaps)
-        }
-
-        return convert(text, using: fallbackMaps)
-    }
-
-    private func convert(_ text: String, using maps: LayoutConversionMaps) -> String {
-        let characters = Array(text)
-        return String(characters.enumerated().map { index, character in
-            let forward = maps.forward[character]
-            let reverse = maps.reverse[character]
-
-            switch (forward, reverse) {
-            case let (forward?, nil):
-                return forward
-            case let (nil, reverse?):
-                return reverse
-            case let (forward?, reverse?):
-                return preferredDirection(at: index, in: characters, using: maps) == .reverse ? reverse : forward
-            case (nil, nil):
-                return character
-            }
-        })
-    }
-
-    private func preferredDirection(
-        at index: Int,
-        in characters: [Character],
-        using maps: LayoutConversionMaps
-    ) -> LayoutConversionDirection {
-        for distance in 1..<max(characters.count, 1) {
-            if index - distance >= 0,
-               let direction = unambiguousDirection(for: characters[index - distance], using: maps)
-            {
-                return direction
-            }
-
-            if index + distance < characters.count,
-               let direction = unambiguousDirection(for: characters[index + distance], using: maps)
-            {
-                return direction
-            }
-        }
-
-        return .forward
-    }
-
-    private func unambiguousDirection(
-        for character: Character,
-        using maps: LayoutConversionMaps
-    ) -> LayoutConversionDirection? {
-        let hasForward = maps.forward[character] != nil
-        let hasReverse = maps.reverse[character] != nil
-
-        if hasForward && !hasReverse {
-            return .forward
-        }
-
-        if hasReverse && !hasForward {
-            return .reverse
-        }
-
-        return nil
-    }
-}
-
-fileprivate struct LayoutConversionMaps {
-    let forward: [Character: Character]
-    let reverse: [Character: Character]
-}
-
-fileprivate enum LayoutConversionDirection {
-    case forward
-    case reverse
-}
-
 enum AccessibilityPermission {
     static var isTrusted: Bool {
         AXIsProcessTrusted()
@@ -451,13 +340,19 @@ enum KeyboardLayoutProvider {
         enabledKeyboardSources().map(\.info)
     }
 
-    fileprivate static func conversionMaps(fallbackMaps: LayoutConversionMaps) -> LayoutConversionMaps? {
+    static func conversionMaps(fallbackMaps: LayoutConversionMaps) -> LayoutConversionMaps? {
         let enabledSources = enabledKeyboardSources()
         let sources = preferredConversionSources(from: enabledSources)
         guard sources.count == 2 else { return nil }
 
         if isEnglishRussianPair(sources) {
-            return fallbackMaps
+            // The fallback map always converts EN -> RU, regardless of list order.
+            return LayoutConversionMaps(
+                forward: fallbackMaps.forward,
+                reverse: fallbackMaps.reverse,
+                forwardTargetID: sources.first(where: { primaryLanguage(for: $0) == "ru" })?.info.identifier,
+                reverseTargetID: sources.first(where: { primaryLanguage(for: $0) == "en" })?.info.identifier
+            )
         }
 
         var forward: [Character: Character] = [:]
@@ -471,7 +366,40 @@ enum KeyboardLayoutProvider {
             reverse[secondCharacter] = firstCharacter
         }
 
-        return forward.isEmpty || reverse.isEmpty ? nil : LayoutConversionMaps(forward: forward, reverse: reverse)
+        return forward.isEmpty || reverse.isEmpty ? nil : LayoutConversionMaps(
+            forward: forward, reverse: reverse,
+            forwardTargetID: sources[1].info.identifier,
+            reverseTargetID: sources[0].info.identifier
+        )
+    }
+
+    static var pairIdentifiers: [String] {
+        preferredConversionSources(from: enabledKeyboardSources()).map { $0.info.identifier }
+    }
+
+    static var currentIdentifier: String? {
+        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else { return nil }
+        return property(source, kTISPropertyInputSourceID)
+    }
+
+    static var availableIdentifiers: Set<String> {
+        Set(selectableSources().compactMap { property($0, kTISPropertyInputSourceID) })
+    }
+
+    static func select(identifier: String) -> Bool {
+        guard let source = selectableSources().first(where: {
+            property($0, kTISPropertyInputSourceID) == identifier
+        }) else { return false }
+        return TISSelectInputSource(source) == noErr
+    }
+
+    private static func selectableSources() -> [TISInputSource] {
+        let properties: [String: Any] = [
+            kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as String,
+            kTISPropertyInputSourceIsEnabled as String: true,
+            kTISPropertyInputSourceIsSelectCapable as String: true
+        ]
+        return TISCreateInputSourceList(properties as CFDictionary, false)?.takeRetainedValue() as? [TISInputSource] ?? []
     }
 
     private static func enabledKeyboardSources() -> [LayoutSource] {
@@ -602,59 +530,130 @@ enum KeyboardLayoutProvider {
     }
 }
 
-final class KeyboardAutomation {
+@MainActor final class KeyboardAutomation {
+    private let environment = MacInputEnvironment()
+    private lazy var operations = InputOperations(environment: environment)
     private let converter = LayoutConverter()
+    private var commandRunning = false
 
-    func convertSelection(language: AppLanguage) -> String {
-        guard AccessibilityPermission.requestPrompt() else {
+    func convertSelection(language: AppLanguage) async -> String {
+        guard !commandRunning else { return message(.busy, language: language) }
+        commandRunning = true
+        defer { commandRunning = false }
+        guard AccessibilityPermission.isTrusted || AccessibilityPermission.requestPrompt() else {
             return AppText.accessibilityRequired(language)
         }
+        return convertThroughClipboard(language: language)
+    }
 
+    func switchLocale(language: AppLanguage) async -> String {
+        guard !commandRunning else { return message(.busy, language: language) }
+        commandRunning = true
+        defer { commandRunning = false }
+        guard AccessibilityPermission.isTrusted || AccessibilityPermission.requestPrompt() else { return AppText.accessibilityRequired(language) }
+        return message(await operations.switchSource(), language: language)
+    }
+
+    // Preserve the original Copy/Paste conversion path. Accessibility text
+    // attributes and writable AXSelectedText are not required by this path.
+    private func convertThroughClipboard(language: AppLanguage) -> String {
+        guard let context = environment.captureSwitchContext() else { return message(.noContext, language: language) }
+        defer { environment.releaseContext(context) }
         let pasteboard = NSPasteboard.general
-        let previous = pasteboard.string(forType: .string)
-
+        let previous = pasteboard.pasteboardItems?.map { item in
+            item.types.compactMap { type -> (NSPasteboard.PasteboardType, Data)? in
+                guard let data = item.data(forType: type) else { return nil }
+                return (type, data)
+            }
+        } ?? []
+        var ownedChangeCount = pasteboard.changeCount
+        defer {
+            // Do not overwrite a clipboard update made by another application.
+            if pasteboard.changeCount == ownedChangeCount {
+                pasteboard.clearContents()
+                let items = previous.map { representations in
+                    let item = NSPasteboardItem()
+                    for (type, data) in representations { item.setData(data, forType: type) }
+                    return item
+                }
+                pasteboard.writeObjects(items)
+            }
+        }
         pasteboard.clearContents()
-        postKey(keyCode: 8, flags: .maskCommand)
+        ownedChangeCount = pasteboard.changeCount
+        guard postKey(keyCode: 8) else { return message(.noSelection, language: language) }
         Thread.sleep(forTimeInterval: 0.16)
-
+        guard environment.contextIsCurrent(context) else { return message(.contextChanged, language: language) }
         guard let selected = pasteboard.string(forType: .string), !selected.isEmpty else {
-            restore(previous)
             return AppText.noSelection(language)
         }
-
-        let converted = converter.convert(selected)
+        ownedChangeCount = pasteboard.changeCount
+        let result = converter.conversion(selected, using: environment.conversionMaps)
+        let sourceBeforePaste = environment.currentSourceID
+        guard environment.contextIsCurrent(context) else { return message(.contextChanged, language: language) }
         pasteboard.clearContents()
-        pasteboard.setString(converted, forType: .string)
-        postKey(keyCode: 9, flags: .maskCommand)
-        Thread.sleep(forTimeInterval: 0.2)
-        restore(previous)
-        return AppText.textConverted(language)
-    }
-
-    func switchLocale(language: AppLanguage) -> String {
-        guard AccessibilityPermission.requestPrompt() else {
-            return AppText.accessibilityRequired(language)
+        guard pasteboard.setString(result.text, forType: .string) else {
+            ownedChangeCount = pasteboard.changeCount
+            return message(.replacementUnconfirmed, language: language)
         }
-
-        postKey(keyCode: 49, flags: .maskControl)
-        return AppText.localeSwitchRequested(language)
+        ownedChangeCount = pasteboard.changeCount
+        guard postKey(keyCode: 9) else { return message(.replacementUnconfirmed, language: language) }
+        Thread.sleep(forTimeInterval: 0.2)
+        let russian = language == .russian
+        let sent = russian ? "Преобразованный текст отправлен на вставку." : "Converted text sent for pasting."
+        guard environment.contextIsCurrent(context) else { return sent }
+        guard let target = result.targetSourceID else { return sent }
+        guard environment.availableSourceIDs.contains(target) else {
+            return sent + (russian ? " Целевая раскладка недоступна." : " Target input source unavailable.")
+        }
+        if environment.currentSourceID != target {
+            guard environment.currentSourceID == sourceBeforePaste,
+                  environment.selectSource(target) else {
+                return sent + (russian ? " Раскладка не переключена." : " Input source was not switched.")
+            }
+        }
+        let confirmed = environment.currentSourceID == target
+        return sent + (russian
+            ? (confirmed ? " Целевая раскладка включена." : " Смена раскладки не подтверждена.")
+            : (confirmed ? " Target input source is active." : " Input source change not confirmed."))
     }
 
-    private func postKey(keyCode: CGKeyCode, flags: CGEventFlags) {
+    private func postKey(keyCode: CGKeyCode) -> Bool {
         let source = CGEventSource(stateID: .hidSystemState)
-        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        down?.flags = flags
-        up?.flags = flags
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else { return false }
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        return true
     }
 
-    private func restore(_ value: String?) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        if let value {
-            pasteboard.setString(value, forType: .string)
+    private func message(_ result: InputOperationResult, language: AppLanguage) -> String {
+        let russian = language == .russian
+        switch result {
+        case .busy:
+            return russian ? "Предыдущая операция ещё выполняется." : "An operation is still in progress."
+        case .noContext:
+            return russian ? "Не удалось определить активное поле ввода." : "Could not identify the focused input field."
+        case .noSelection:
+            return russian ? "Нет доступного выделения или поле не поддерживает проверяемую замену." : "No accessible selection, or this field does not support verified replacement."
+        case .contextChanged:
+            return russian ? "Операция отменена: фокус изменился." : "Operation cancelled: focus changed."
+        case .replacementUnconfirmed:
+            return russian ? "Замена текста не подтверждена. Раскладка не переключалась." : "Text replacement was not confirmed. No input source switch was requested."
+        case .converted:
+            return AppText.textConverted(language)
+        case .convertedAndSwitched:
+            return russian ? "Текст сконвертирован, целевая раскладка включена." : "Text converted; the target input source is active."
+        case .convertedSourceUnconfirmed:
+            return russian ? "Текст сконвертирован, но целевая раскладка не подтверждена." : "Text converted, but the target input source was not confirmed."
+        case .sourceUnavailable:
+            return russian ? "Текущий источник вне рабочей пары или вторая раскладка недоступна." : "The current source is outside the working pair, or the other source is unavailable."
+        case .switched:
+            return russian ? "Раскладка переключена." : "Input source switched."
+        case .switchUnconfirmed:
+            return russian ? "Переключение не подтверждено: источник или фокус изменился либо система отказала." : "Switch not confirmed: the source or focus changed, or the system declined the request."
         }
     }
 }
@@ -1181,7 +1180,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func refreshAccessibilityNotice() {
-        accessibilityNotice.isHidden = AccessibilityPermission.isTrusted
+        let trusted = AccessibilityPermission.isTrusted
+        accessibilityNotice.isHidden = trusted
+        if trusted {
+            let permissionMessages = [AppLanguage.english, .russian].flatMap {
+                [AppText.accessibilityRequired($0), AppText.accessibilityOpenSettings($0)]
+            }
+            if permissionMessages.contains(statusLabel.stringValue) {
+                statusLabel.stringValue = AppText.accessibilityAlreadyAllowed(store.settings.language)
+            }
+        }
     }
 
     private func refreshLayoutsNotice() {
@@ -1301,7 +1309,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private let store = SettingsStore()
     private let automation = KeyboardAutomation()
     private let loginItems = LoginItemManager()
@@ -1389,13 +1397,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func convertSelection() {
-        let message = automation.convertSelection(language: store.settings.language)
-        settingsWindow?.setStatus(message)
+        Task { @MainActor in
+            let message = await automation.convertSelection(language: store.settings.language)
+            settingsWindow?.setStatus(message)
+            statusItem?.button?.toolTip = message
+        }
     }
 
     @objc private func switchLocale() {
-        let message = automation.switchLocale(language: store.settings.language)
-        settingsWindow?.setStatus(message)
+        Task { @MainActor in
+            let message = await automation.switchLocale(language: store.settings.language)
+            settingsWindow?.setStatus(message)
+            statusItem?.button?.toolTip = message
+        }
     }
 
     private func applyLocalization() {
@@ -1410,7 +1424,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.run()
+// AppKit starts on the main thread; keep delegate creation on MainActor.
+MainActor.assumeIsolated {
+    let app = NSApplication.shared
+    let delegate = AppDelegate()
+    app.delegate = delegate
+    withExtendedLifetime(delegate) { app.run() }
+}

@@ -1,0 +1,4 @@
+[0/1] Planning build
+Building for debugging...
+[0/1] Write swift-version-589446694DF107B7.txt
+Build complete! (0.54s)

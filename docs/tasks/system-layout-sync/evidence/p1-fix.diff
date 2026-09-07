@@ -1,0 +1,24 @@
+--- /tmp/langconvert-swift/p1-red-Conversion.swift	2026-09-07 10:33:50.972674021 +0000
++++ Sources/LangConvertCore/Conversion.swift	2026-09-07 10:34:31.978147349 +0000
+@@ -28,7 +28,20 @@
+     }
+ 
+     public func conversion(_ text: String, using maps: LayoutConversionMaps) -> ConversionResult {
+-        ConversionResult(text: convert(text, using: maps), targetSourceID: nil)
++        let converted = convert(text, using: maps)
++        for character in text.reversed() {
++            guard !character.isWhitespace, !character.isNumber,
++                  let direction = unambiguousDirection(for: character, using: maps)
++            else { continue }
++            let mapped = direction == .forward ? maps.forward[character] : maps.reverse[character]
++            guard let mapped, mapped != character, !mapped.isWhitespace, !mapped.isNumber,
++                  let mappedDirection = unambiguousDirection(for: mapped, using: maps),
++                  mappedDirection != direction
++            else { continue }
++            let target = direction == .forward ? maps.forwardTargetID : maps.reverseTargetID
++            return ConversionResult(text: converted, targetSourceID: target)
++        }
++        return ConversionResult(text: converted, targetSourceID: nil)
+     }
+ 
+     public func convert(_ text: String, using maps: LayoutConversionMaps) -> String {

@@ -1,0 +1,78 @@
+--- /tmp/langconvert-swift/p2-red-InputOperations.swift	2026-09-07 13:01:17.581507646 +0000
++++ Sources/LangConvertCore/InputOperations.swift	2026-09-07 13:01:51.429732275 +0000
+@@ -25,17 +25,73 @@
+ @MainActor public final class InputOperations {
+     private let environment: any InputEnvironment
+     private let converter = LayoutConverter()
++    private var busy = false
++    private let confirmationAttempts = 12
+ 
+     public init(environment: any InputEnvironment) { self.environment = environment }
+ 
+     public func convertSelection() async -> InputOperationResult {
++        guard !busy else { return .busy }
++        busy = true
++        defer { busy = false }
+         guard let context = environment.captureContext() else { return .noContext }
+         defer { environment.releaseContext(context) }
++        guard isCurrent(context) else { return .contextChanged }
+         guard let selected = environment.selectedText(in: context), !selected.isEmpty else { return .noSelection }
++        let sourceBeforeReplacement = environment.currentSourceID
+         let result = converter.conversion(selected, using: environment.conversionMaps)
++        guard isCurrent(context) else { return .contextChanged }
+         guard environment.replaceSelection(with: result.text, in: context) else { return .replacementUnconfirmed }
+-        return .converted
++
++        for attempt in 0..<confirmationAttempts {
++            switch environment.replacementState(in: context) {
++            case .confirmed:
++                guard let target = result.targetSourceID else { return .converted }
++                let succeeded = await select(target, in: context, expectedSource: sourceBeforeReplacement)
++                return succeeded ? .convertedAndSwitched : .convertedSourceUnconfirmed
++            case .failed:
++                return .replacementUnconfirmed
++            case .pending:
++                guard isCurrent(context), attempt + 1 < confirmationAttempts else { return .replacementUnconfirmed }
++                await environment.waitForSystem()
++            }
++        }
++        return .replacementUnconfirmed
++    }
++
++    public func switchSource() async -> InputOperationResult {
++        guard !busy else { return .busy }
++        busy = true
++        defer { busy = false }
++        guard let context = environment.captureContext() else { return .noContext }
++        defer { environment.releaseContext(context) }
++        guard isCurrent(context) else { return .contextChanged }
++        let pair = environment.pairIDs
++        guard pair.count == 2, pair[0] != pair[1],
++              let current = environment.currentSourceID, pair.contains(current),
++              pair.allSatisfy({ environment.availableSourceIDs.contains($0) })
++        else { return .sourceUnavailable }
++        let target = pair[0] == current ? pair[1] : pair[0]
++        return await select(target, in: context, expectedSource: current) ? .switched : .switchUnconfirmed
++    }
++
++    private func isCurrent(_ context: String) -> Bool {
++        !Task.isCancelled && environment.contextIsCurrent(context)
+     }
+ 
+-    public func switchSource() async -> InputOperationResult { .switchUnconfirmed }
++    private func select(_ target: String, in context: String, expectedSource: String?) async -> Bool {
++        guard isCurrent(context), environment.availableSourceIDs.contains(target) else { return false }
++        let current = environment.currentSourceID
++        if current == target { return true }
++        // An external change after capture wins; do not restore our earlier intent.
++        guard current == expectedSource, environment.selectSource(target) else { return false }
++        for attempt in 0..<confirmationAttempts {
++            guard isCurrent(context), environment.availableSourceIDs.contains(target) else { return false }
++            let observed = environment.currentSourceID
++            if observed == target { return true }
++            guard observed == current, attempt + 1 < confirmationAttempts else { return false }
++            await environment.waitForSystem()
++        }
++        return false
++    }
+ }
