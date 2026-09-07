@@ -1330,7 +1330,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.run()
+// AppKit starts on the main thread; keep delegate creation on MainActor.
+MainActor.assumeIsolated {
+    let app = NSApplication.shared
+    let delegate = AppDelegate()
+    app.delegate = delegate
+    withExtendedLifetime(delegate) { app.run() }
+}

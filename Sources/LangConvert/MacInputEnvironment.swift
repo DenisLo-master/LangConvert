@@ -47,7 +47,7 @@ import LangConvertCore
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] notification in
             let pid = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.processIdentifier
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard self.snapshots.values.contains(where: { $0.pid != pid }) ||
                       self.switchSnapshots.values.contains(where: { $0.pid != pid }) else { return }
