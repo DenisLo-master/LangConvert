@@ -533,15 +533,100 @@ enum KeyboardLayoutProvider {
 @MainActor final class KeyboardAutomation {
     private let environment = MacInputEnvironment()
     private lazy var operations = InputOperations(environment: environment)
+    private let converter = LayoutConverter()
+    private var commandRunning = false
 
     func convertSelection(language: AppLanguage) async -> String {
-        guard AccessibilityPermission.requestPrompt() else { return AppText.accessibilityRequired(language) }
-        return message(await operations.convertSelection(), language: language)
+        guard !commandRunning else { return message(.busy, language: language) }
+        commandRunning = true
+        defer { commandRunning = false }
+        guard AccessibilityPermission.isTrusted || AccessibilityPermission.requestPrompt() else {
+            return AppText.accessibilityRequired(language)
+        }
+        return convertThroughClipboard(language: language)
     }
 
     func switchLocale(language: AppLanguage) async -> String {
-        guard AccessibilityPermission.requestPrompt() else { return AppText.accessibilityRequired(language) }
+        guard !commandRunning else { return message(.busy, language: language) }
+        commandRunning = true
+        defer { commandRunning = false }
+        guard AccessibilityPermission.isTrusted || AccessibilityPermission.requestPrompt() else { return AppText.accessibilityRequired(language) }
         return message(await operations.switchSource(), language: language)
+    }
+
+    // Preserve the original Copy/Paste conversion path. Accessibility text
+    // attributes and writable AXSelectedText are not required by this path.
+    private func convertThroughClipboard(language: AppLanguage) -> String {
+        guard let context = environment.captureSwitchContext() else { return message(.noContext, language: language) }
+        defer { environment.releaseContext(context) }
+        let pasteboard = NSPasteboard.general
+        let previous = pasteboard.pasteboardItems?.map { item in
+            item.types.compactMap { type -> (NSPasteboard.PasteboardType, Data)? in
+                guard let data = item.data(forType: type) else { return nil }
+                return (type, data)
+            }
+        } ?? []
+        var ownedChangeCount = pasteboard.changeCount
+        defer {
+            // Do not overwrite a clipboard update made by another application.
+            if pasteboard.changeCount == ownedChangeCount {
+                pasteboard.clearContents()
+                let items = previous.map { representations in
+                    let item = NSPasteboardItem()
+                    for (type, data) in representations { item.setData(data, forType: type) }
+                    return item
+                }
+                pasteboard.writeObjects(items)
+            }
+        }
+        pasteboard.clearContents()
+        ownedChangeCount = pasteboard.changeCount
+        guard postKey(keyCode: 8) else { return message(.noSelection, language: language) }
+        Thread.sleep(forTimeInterval: 0.16)
+        guard environment.contextIsCurrent(context) else { return message(.contextChanged, language: language) }
+        guard let selected = pasteboard.string(forType: .string), !selected.isEmpty else {
+            return AppText.noSelection(language)
+        }
+        ownedChangeCount = pasteboard.changeCount
+        let result = converter.conversion(selected, using: environment.conversionMaps)
+        let sourceBeforePaste = environment.currentSourceID
+        guard environment.contextIsCurrent(context) else { return message(.contextChanged, language: language) }
+        pasteboard.clearContents()
+        guard pasteboard.setString(result.text, forType: .string) else {
+            ownedChangeCount = pasteboard.changeCount
+            return message(.replacementUnconfirmed, language: language)
+        }
+        ownedChangeCount = pasteboard.changeCount
+        guard postKey(keyCode: 9) else { return message(.replacementUnconfirmed, language: language) }
+        Thread.sleep(forTimeInterval: 0.2)
+        let russian = language == .russian
+        let sent = russian ? "Преобразованный текст отправлен на вставку." : "Converted text sent for pasting."
+        guard environment.contextIsCurrent(context) else { return sent }
+        guard let target = result.targetSourceID else { return sent }
+        guard environment.availableSourceIDs.contains(target) else {
+            return sent + (russian ? " Целевая раскладка недоступна." : " Target input source unavailable.")
+        }
+        if environment.currentSourceID != target {
+            guard environment.currentSourceID == sourceBeforePaste,
+                  environment.selectSource(target) else {
+                return sent + (russian ? " Раскладка не переключена." : " Input source was not switched.")
+            }
+        }
+        let confirmed = environment.currentSourceID == target
+        return sent + (russian
+            ? (confirmed ? " Целевая раскладка включена." : " Смена раскладки не подтверждена.")
+            : (confirmed ? " Target input source is active." : " Input source change not confirmed."))
+    }
+
+    private func postKey(keyCode: CGKeyCode) -> Bool {
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else { return false }
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        return true
     }
 
     private func message(_ result: InputOperationResult, language: AppLanguage) -> String {
@@ -1095,7 +1180,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func refreshAccessibilityNotice() {
-        accessibilityNotice.isHidden = AccessibilityPermission.isTrusted
+        let trusted = AccessibilityPermission.isTrusted
+        accessibilityNotice.isHidden = trusted
+        if trusted {
+            let permissionMessages = [AppLanguage.english, .russian].flatMap {
+                [AppText.accessibilityRequired($0), AppText.accessibilityOpenSettings($0)]
+            }
+            if permissionMessages.contains(statusLabel.stringValue) {
+                statusLabel.stringValue = AppText.accessibilityAlreadyAllowed(store.settings.language)
+            }
+        }
     }
 
     private func refreshLayoutsNotice() {

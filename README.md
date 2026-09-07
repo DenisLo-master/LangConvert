@@ -62,8 +62,7 @@ configured.
 
 - macOS 13 or newer.
 - Xcode Command Line Tools for building from source.
-- Accessibility permission and an editable field that exposes its text, selection,
-  replacement, and focus notifications through macOS Accessibility.
+- Accessibility permission and a field supporting standard Copy/Paste shortcuts.
 - Any two enabled keyboard input sources in macOS Keyboard/Input Sources for
   dynamic conversion. With more than two layouts, LangConvert prefers the first
   pair with different languages; otherwise it uses the first two. If layout
@@ -87,16 +86,16 @@ The switch hotkey reads the actual macOS input source and explicitly selects the
 other source in the working pair. A source outside that pair or an unavailable
 partner produces a clear status instead of a guessed selection.
 
-After confirmed text replacement, LangConvert selects the source of the last
+After sending the converted text through standard Copy/Paste, LangConvert selects the source of the last
 unambiguously converted character. Trailing spaces, digits, and ambiguous signs
 are skipped; mixed text uses the last qualifying character, not the majority.
 If no target can be identified, the source is left unchanged. An already active
 target is not toggled again. macOS document-specific source restoration remains
 under system control; LangConvert does not keep a per-window source history.
 
-Unsupported fields, focus changes, and unconfirmed replacements stop remaining
-actions. If replacement succeeds but source selection fails, the status reports
-partial success. The latest result appears in Settings and the menu-bar icon's
+Copy/Paste preserves the original editor compatibility. Focus changes stop remaining
+actions. Sending Paste does not prove that an editor accepted it; the status reports
+the Paste request and input source result separately. The latest result appears in Settings and the menu-bar icon's
 tooltip. Full macOS build and interactive validation of this change are pending;
 the committed installer has not been updated for it.
 
@@ -104,7 +103,7 @@ the committed installer has not been updated for it.
 
 LangConvert is local and does not send text to external services.
 
-- Selected text is read and replaced through Accessibility; the clipboard is untouched.
+- Conversion temporarily uses the clipboard and restores its previous contents unless another application changed it.
 - Text and focus snapshots exist only for the current operation and are not logged.
 - Input/focus events cancel stale operations; typed keys are not recorded.
 - Hotkeys and the selected UI language are stored locally in the user settings
@@ -233,8 +232,7 @@ Apple notarization.
 
 - macOS 13 или новее.
 - Xcode Command Line Tools для сборки из исходников.
-- Разрешение Accessibility и поле, которое предоставляет текст, выделение,
-  замену и уведомления о фокусе через macOS Accessibility.
+- Разрешение Accessibility и поле, поддерживающее обычное копирование и вставку.
 - Любые две включенные keyboard input sources в macOS Keyboard/Input Sources
   для динамической конвертации. При более двух источниках выбирается первая
   пара разных языков, иначе первые две раскладки. Если layout data недоступны,
@@ -257,16 +255,16 @@ Apple notarization.
 другую раскладку рабочей пары. Если текущий источник вне пары или второй
 недоступен, приложение сообщает причину и не угадывает язык.
 
-После подтверждённой замены текста включается раскладка последнего однозначно
+После отправки преобразованного текста через обычное копирование/вставку включается раскладка последнего однозначно
 преобразованного символа. Конечные пробелы, цифры и неоднозначные знаки
 пропускаются; для смешанного текста важен последний подходящий символ,
 а не большинство букв. Если цель не определена, источник остаётся прежним.
 Уже активная целевая раскладка не переключается повторно. Восстановление
 раскладки документа остаётся под управлением macOS; собственной памяти окон нет.
 
-Неподдерживаемое поле, смена фокуса или неподтверждённая замена останавливают
-оставшиеся действия. Если текст заменён, но язык не выбран, сообщается частичный
-результат. Последний статус доступен в настройках и подсказке значка приложения.
+Копирование/вставка сохраняют прежний способ работы с редакторами. Смена фокуса
+останавливает оставшиеся действия. Отправка команды вставки не доказывает, что
+редактор её принял; статус отдельно сообщает отправку вставки и результат выбора языка. Последний статус доступен в настройках и подсказке значка приложения.
 Полная сборка и интерактивная проверка этого изменения на macOS ещё не выполнены;
 сохранённый установщик пока не обновлён для этих изменений.
 
@@ -274,7 +272,7 @@ Apple notarization.
 
 LangConvert работает локально и не отправляет текст во внешние сервисы.
 
-- Выделенный текст читается и заменяется через Accessibility; буфер обмена не меняется.
+- Конвертация временно использует буфер обмена и восстанавливает его содержимое, если другое приложение его не изменило.
 - Текст и контекст фокуса хранятся только на время операции и не журналируются.
 - События ввода и фокуса отменяют устаревшие операции; нажатые клавиши не записываются.
 - Hotkeys и выбранный язык UI сохраняются локально в пользовательских
