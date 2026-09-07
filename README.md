@@ -38,9 +38,9 @@ workflow: fix the selected text without opening a separate editor.
 
 | Area | What it does |
 | --- | --- |
-| Any system pair | Converts selected text between the first two enabled macOS keyboard layouts, so the pair can be English/Russian, English/German, French/Spanish, or any other layouts macOS exposes. |
+| Any system pair | Converts selected text between a working pair of enabled macOS keyboard layouts, so the pair can be English/Russian, English/German, French/Spanish, or any other layouts macOS exposes. |
 | EN/RU fallback | Includes a QWERTY/JCUKEN fallback map for common Russian/English use when system layout data is unavailable. |
-| Global hotkeys | Lets you configure hotkeys for text conversion and system locale switching. |
+| Global hotkeys | Lets you configure hotkeys for text conversion and keyboard layout switching. |
 | Menu-bar UI | Runs near the clock with no Dock icon. |
 | Localized interface | Supports English and Russian UI from the settings window. |
 | Launch at login | Can start automatically through a user LaunchAgent. |
@@ -62,11 +62,12 @@ configured.
 
 - macOS 13 or newer.
 - Xcode Command Line Tools for building from source.
-- Accessibility permission so LangConvert can copy, replace, and restore
-  selected text in the active app.
+- Accessibility permission and an editable field that exposes its text, selection,
+  replacement, and focus notifications through macOS Accessibility.
 - Any two enabled keyboard input sources in macOS Keyboard/Input Sources for
-  dynamic conversion. LangConvert uses the first two layouts macOS exposes; if
-  layout data is unavailable, it falls back to EN/RU.
+  dynamic conversion. With more than two layouts, LangConvert prefers the first
+  pair with different languages; otherwise it uses the first two. If layout
+  data is unavailable, text conversion falls back to EN/RU.
 
 ### Install
 
@@ -76,16 +77,36 @@ configured.
 4. Grant Accessibility permission when macOS asks.
 5. Keep the needed pair of keyboard layouts enabled in macOS Keyboard/Input
    Sources.
-6. Open `Settings` and configure the conversion and locale-switch hotkeys.
+6. Open `Settings` and configure the conversion and layout-switch hotkeys.
 7. Select text in any app, press the conversion hotkey, and LangConvert replaces
    the selection.
+
+### Input source behavior
+
+The switch hotkey reads the actual macOS input source and explicitly selects the
+other source in the working pair. A source outside that pair or an unavailable
+partner produces a clear status instead of a guessed selection.
+
+After confirmed text replacement, LangConvert selects the source of the last
+unambiguously converted character. Trailing spaces, digits, and ambiguous signs
+are skipped; mixed text uses the last qualifying character, not the majority.
+If no target can be identified, the source is left unchanged. An already active
+target is not toggled again. macOS document-specific source restoration remains
+under system control; LangConvert does not keep a per-window source history.
+
+Unsupported fields, focus changes, and unconfirmed replacements stop remaining
+actions. If replacement succeeds but source selection fails, the status reports
+partial success. The latest result appears in Settings and the menu-bar icon's
+tooltip. Full macOS build and interactive validation of this change are pending;
+the committed installer has not been updated for it.
 
 ### Privacy
 
 LangConvert is local and does not send text to external services.
 
-- Selected text is copied through the system clipboard only for conversion.
-- The previous clipboard contents are restored after replacement.
+- Selected text is read and replaced through Accessibility; the clipboard is untouched.
+- Text and focus snapshots exist only for the current operation and are not logged.
+- Input/focus events cancel stale operations; typed keys are not recorded.
 - Hotkeys and the selected UI language are stored locally in the user settings
   file.
 - Launch-at-login is managed through a user LaunchAgent.
@@ -138,7 +159,10 @@ bash -n scripts/package-macos.sh
 git diff --check
 ```
 
-The lightweight converter test covers the fallback EN/RU character mapping.
+`swift test` checks the production conversion and operation logic, including
+target source selection, failure, and focus cancellation. On Linux it builds
+only the shared logic and tests, not the macOS application.
+The lightweight Python test additionally covers fallback EN/RU character mapping.
 Full AppKit, hotkey, Accessibility, and installer smoke checks require macOS.
 
 ### Project Status
@@ -185,9 +209,9 @@ LangConvert - это легкое native macOS-приложение в пане�
 
 | Раздел | Что делает |
 | --- | --- |
-| Любая системная пара | Конвертирует выделенный текст между первыми двумя включенными раскладками macOS: это может быть English/Russian, English/German, French/Spanish или любая другая пара, которую отдает macOS. |
+| Любая системная пара | Конвертирует выделенный текст между рабочей парой включенных раскладок macOS: это может быть English/Russian, English/German, French/Spanish или любая другая пара, которую отдает macOS. |
 | EN/RU fallback | Содержит запасную QWERTY/JCUKEN-таблицу для русско-английского сценария, если системные layout data недоступны. |
-| Глобальные hotkeys | Позволяет настроить горячие клавиши конвертации текста и переключения системной локали. |
+| Глобальные hotkeys | Позволяет настроить горячие клавиши конвертации текста и переключения раскладки. |
 | UI в панели статуса | Работает около часов, без иконки в Dock. |
 | Локализация интерфейса | Поддерживает английский и русский интерфейс в окне настроек. |
 | Автозапуск | Может запускаться при входе в систему через user LaunchAgent. |
@@ -209,12 +233,12 @@ Apple notarization.
 
 - macOS 13 или новее.
 - Xcode Command Line Tools для сборки из исходников.
-- Разрешение Accessibility, чтобы LangConvert мог копировать, заменять и
-  восстанавливать выделенный текст в активном приложении.
+- Разрешение Accessibility и поле, которое предоставляет текст, выделение,
+  замену и уведомления о фокусе через macOS Accessibility.
 - Любые две включенные keyboard input sources в macOS Keyboard/Input Sources
-  для динамической конвертации. LangConvert использует первые две раскладки,
-  которые отдает macOS; если layout data недоступны, используется EN/RU
-  fallback.
+  для динамической конвертации. При более двух источниках выбирается первая
+  пара разных языков, иначе первые две раскладки. Если layout data недоступны,
+  преобразование текста использует EN/RU fallback.
 
 ### Установка
 
@@ -223,17 +247,36 @@ Apple notarization.
 3. Откройте LangConvert из панели статуса около часов.
 4. Выдайте Accessibility permission, когда macOS попросит.
 5. Оставьте включенной нужную пару раскладок в macOS Keyboard/Input Sources.
-6. Откройте `Настройки` и задайте hotkeys для конвертации и смены локали.
+6. Откройте `Настройки` и задайте hotkeys для конвертации и смены раскладки.
 7. Выделите текст в любом приложении, нажмите hotkey конвертации, и LangConvert
    заменит выделение.
+
+### Поведение раскладки
+
+Команда переключения читает фактический системный источник и явно выбирает
+другую раскладку рабочей пары. Если текущий источник вне пары или второй
+недоступен, приложение сообщает причину и не угадывает язык.
+
+После подтверждённой замены текста включается раскладка последнего однозначно
+преобразованного символа. Конечные пробелы, цифры и неоднозначные знаки
+пропускаются; для смешанного текста важен последний подходящий символ,
+а не большинство букв. Если цель не определена, источник остаётся прежним.
+Уже активная целевая раскладка не переключается повторно. Восстановление
+раскладки документа остаётся под управлением macOS; собственной памяти окон нет.
+
+Неподдерживаемое поле, смена фокуса или неподтверждённая замена останавливают
+оставшиеся действия. Если текст заменён, но язык не выбран, сообщается частичный
+результат. Последний статус доступен в настройках и подсказке значка приложения.
+Полная сборка и интерактивная проверка этого изменения на macOS ещё не выполнены;
+сохранённый установщик пока не обновлён для этих изменений.
 
 ### Приватность
 
 LangConvert работает локально и не отправляет текст во внешние сервисы.
 
-- Выделенный текст временно копируется через системный буфер обмена только для
-  конвертации.
-- Предыдущее содержимое буфера обмена восстанавливается после замены.
+- Выделенный текст читается и заменяется через Accessibility; буфер обмена не меняется.
+- Текст и контекст фокуса хранятся только на время операции и не журналируются.
+- События ввода и фокуса отменяют устаревшие операции; нажатые клавиши не записываются.
 - Hotkeys и выбранный язык UI сохраняются локально в пользовательских
   настройках.
 - Автозапуск управляется через user LaunchAgent.
@@ -286,7 +329,9 @@ bash -n scripts/package-macos.sh
 git diff --check
 ```
 
-Легкий converter test проверяет запасную EN/RU-таблицу символов. Полные smoke
+`swift test` проверяет production-логику конвертации и операций: целевой источник,
+отказы и отмену по фокусу. На Linux собираются только общее ядро и тесты,
+а не macOS-приложение. Python-тест дополнительно проверяет EN/RU-таблицу символов. Полные smoke
 проверки AppKit, hotkeys, Accessibility и installer требуют macOS.
 
 ### Статус проекта

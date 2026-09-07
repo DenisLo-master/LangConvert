@@ -1,0 +1,45 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[2/4] Write swift-version-589446694DF107B7.txt
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[4/6] Compiling LangConvertCore InputOperations.swift
+[5/6] Emitting module LangConvertCore
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[6/14] Wrapping AST for LangConvertCore for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[8/16] Emitting module LangConvertCoreTests
+[9/16] Compiling LangConvertCoreTests InputOperationAcceptanceTests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[10/17] /workspace/LangConvert/.build/x86_64-unknown-linux-gnu/debug/LangConvertPackageDiscoveredTests.derived/all-discovered-tests.swift
+[11/18] Write sources
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[12/18] Wrapping AST for LangConvertCoreTests for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[14/21] Emitting module LangConvertPackageDiscoveredTests
+[15/21] Compiling LangConvertPackageDiscoveredTests LangConvertCoreTests.swift
+[16/21] Compiling LangConvertPackageDiscoveredTests all-discovered-tests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[17/22] /workspace/LangConvert/.build/x86_64-unknown-linux-gnu/debug/LangConvertPackageTests.derived/runner.swift
+[18/23] Write sources
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[19/23] Wrapping AST for LangConvertPackageDiscoveredTests for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[21/25] Compiling LangConvertPackageTests runner.swift
+[22/25] Emitting module LangConvertPackageTests
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[23/25] Write Objects.LinkFileList
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[24/25] Linking LangConvertPackageTests.xctest
+Build complete! (5.78s)
+Test Suite 'Selected tests' started at 2026-09-07 13:18:53.221
+Test Suite 'InputOperationAcceptanceTests' started at 2026-09-07 13:18:53.223
+Test Case 'InputOperationAcceptanceTests.testManualSwitchDoesNotRequireEditableConversionContext' started at 2026-09-07 13:18:53.223
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:287: error: InputOperationAcceptanceTests.testManualSwitchDoesNotRequireEditableConversionContext : XCTAssertEqual failed: ("noContext") is not equal to ("switched") -
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:288: error: InputOperationAcceptanceTests.testManualSwitchDoesNotRequireEditableConversionContext : XCTAssertEqual failed: ("Optional("en")") is not equal to ("Optional("ru")") -
+Test Case 'InputOperationAcceptanceTests.testManualSwitchDoesNotRequireEditableConversionContext' failed (0.002 seconds)
+Test Suite 'InputOperationAcceptanceTests' failed at 2026-09-07 13:18:53.225
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'Selected tests' failed at 2026-09-07 13:18:53.226
+Executed 1 test, with 2 failures (0 unexpected) in 0.002 (0.002) seconds

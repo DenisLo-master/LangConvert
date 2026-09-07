@@ -1,0 +1,37 @@
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version-589446694DF107B7.txt
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[3/5] Emitting module LangConvertCoreTests
+[4/5] Compiling LangConvertCoreTests InputOperationAcceptanceTests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[5/12] /workspace/LangConvert/.build/x86_64-unknown-linux-gnu/debug/LangConvertPackageDiscoveredTests.derived/all-discovered-tests.swift
+[6/13] Write sources
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[7/13] Wrapping AST for LangConvertCoreTests for debugging
+[9/16] Compiling LangConvertPackageDiscoveredTests all-discovered-tests.swift
+[10/16] Emitting module LangConvertPackageDiscoveredTests
+[11/16] Compiling LangConvertPackageDiscoveredTests LangConvertCoreTests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[12/17] /workspace/LangConvert/.build/x86_64-unknown-linux-gnu/debug/LangConvertPackageTests.derived/runner.swift
+[13/18] Write sources
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[14/18] Wrapping AST for LangConvertPackageDiscoveredTests for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[16/20] Emitting module LangConvertPackageTests
+[17/20] Compiling LangConvertPackageTests runner.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[18/20] Write Objects.LinkFileList
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[19/20] Linking LangConvertPackageTests.xctest
+Build complete! (4.90s)
+Test Suite 'Selected tests' started at 2026-09-07 13:11:58.613
+Test Suite 'InputOperationAcceptanceTests' started at 2026-09-07 13:11:58.617
+Test Case 'InputOperationAcceptanceTests.testCancellationStopsVerificationSideEffects' started at 2026-09-07 13:11:58.617
+/workspace/LangConvert/Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift:244: error: InputOperationAcceptanceTests.testCancellationStopsVerificationSideEffects : XCTAssertFalse failed -
+Test Case 'InputOperationAcceptanceTests.testCancellationStopsVerificationSideEffects' failed (0.003 seconds)
+Test Suite 'InputOperationAcceptanceTests' failed at 2026-09-07 13:11:58.620
+Executed 1 test, with 1 failure (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'Selected tests' failed at 2026-09-07 13:11:58.620
+Executed 1 test, with 1 failure (0 unexpected) in 0.003 (0.003) seconds

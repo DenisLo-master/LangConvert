@@ -1,0 +1,189 @@
+owner: GPT Admin / pipeline-architect
+revision: 2
+date: '2026-09-07'
+workspace: /workspace/LangConvert
+branch: codex/system-layout-sync
+base: 1fe815c1fa43b9e8a7c554c37bd2b37b13e0fa55
+task: docs/tasks/system-layout-sync/task.md
+task_sha256: e6119b7cfb31a928b1fe47911ea387db91c126f5294e8d1dfdf567a81cb75e14
+pipeline: product-dev-standard
+selection_authority: explicit user request for Standard and subsequent approve task
+status: in-progress
+architecture_verdict: ARCHITECT_PHASE_APPROVED
+prerequisites:
+  approval: execution-evidence.md
+  acceptance: tdd-acceptance.md
+  acceptance_verdict: TDD_ACCEPTANCE_TESTS_READY
+  acceptance_sha256: 3b0fc93c00e4ebb5d5375a63307d04b359f32c9daa9d456c14333949ec0578a1
+  next_gate: macOS build/runtime acceptance and affected final gates
+  strategy_report: tdd-strategy-p2.md
+  strategy_verdict: P1 and P2 core TDD_PHASE_READY; native verification pending
+  blocker: Только macOS integration evidence; не препятствует production core RED/GREEN и подготовке адаптеров.
+retrieval:
+  knowledge_base: docs/context
+  queries:
+    - Системный источник ввода после смены фокуса
+    - Подтверждение замены выделения и направление конвертации
+  candidate_cards: []
+  alternate: KB и knowledge.sh отсутствуют; rg по docs и main.swift, см. execution-evidence.md
+  opened_surfaces:
+    - Sources/LangConvert/main.swift
+    - Package.swift
+    - scripts/test-layout-converter.py
+    - .github/workflows/build-native-macos-pkg.yml
+    - docs/plans/macos-menu-bar-layout-converter.md
+  drift: Исходное упрощение README до первых двух исправлено; фактическая политика описана.
+critical_review:
+  alternatives:
+    - approach: Продолжать синтез Control + Space с дополнительными задержками
+      decision: rejected
+      reason: Не задаёт конкретный источник и не подтверждает замену; не выполняет AC01/17.
+    - approach: Явный выбор TIS, результат конвертации с направлением, проверяемая AX-операция
+      decision: selected
+      reason: Источник выбирается по ID; замена привязана к конкретному элементу, а не чужому фокусу.
+    - approach: Память раскладок приложений и принудительное восстановление
+      decision: rejected
+      reason: Противоречит AC03 и пользовательскому требованию принимать системное состояние.
+  constraints:
+    - Существующие таблицы и выбор пары сохраняются; не подменять EN/RU направление порядком источников.
+    - Пробелы, цифры и неоднозначные знаки не определяют целевой источник.
+    - Неподдерживаемая AX-операция завершается явно, без слепой вставки в неизвестный контекст.
+    - Проверка фокуса не является атомарной с системным вызовом; минимизировать окно гонки, тестировать на macOS.
+    - Revision 2 переносит native binding P1 в финальную интеграционную проверку; ядро P1 имеет отдельный TDD approval.
+    - P2 production coordinator тестируется на Linux через внешние протоколы среды; native адаптер проверяется отдельно.
+    - Ошибка среды не является RED; выполнение native smoke и компиляции остаётся обязательным для финального pass.
+    - Внешнее изменение во время ожидания не переигрывать повторным выбором.
+    - Нет новых разрешений, памяти окон, индикатора, CI изменений или ремонта modifier-only.
+    - R2 repair разделяет manual PID/window context и strict conversion AX context; manual выбор один до await.
+    - Документационная подготовка P3 разрешена после core GREEN; финальный P3 verdict зависит от полного P1/P2 native evidence.
+  reference:
+    - https://developer.apple.com/documentation/applicationservices/kaxselectedtextattribute
+    - https://developer.apple.com/documentation/appkit/nstextinputcontext/keyboardinputsources
+  completeness_review: Все AC01–18 сопоставлены фазам; unsupported, partial и cancel пути сохранены.
+  consistency_review: План не обещает устранить системное восстановление документа и не ослабляет подтверждение замены.
+  environment: Swift 5.10.1 runner проверен на Linux; macOS P2 недоступен.
+phases:
+  - phase_id: P1
+    title: Связать направление преобразования с системной парой
+    status: blocked
+    description: >-
+      Сохранить преобразование, добавив результат с направлением последнего
+      однозначного символа. Отделить платформенно независимое преобразование
+      от получения системной пары, связать её стороны с конкретными source IDs.
+      EN/RU fallback ориентирован EN→RU независимо от порядка системного списка.
+    source:
+      task_quote: 'Определяет целевой источник по последнему однозначно преобразованному'
+    task_item_coverage: [AC04, AC05, AC06, AC07, AC08, AC09, AC12, AC14, AC18]
+    acceptance_cases: [AC04, AC05, AC06, AC07, AC08, AC09, AC12, AC14, AC18]
+    requires_tdd: true
+    dependencies: []
+    agent:
+      implementation_scope:
+        - Sources/LangConvert/main.swift — LayoutConverter и KeyboardLayoutProvider
+        - Package.swift — LangConvertCore и tests; executable только на macOS
+        - Sources/LangConvertCore/Conversion.swift — production логика без AppKit
+        - Tests/LangConvertCoreTests — публичные результаты конвертации
+        - Swift tests — публичные результаты преобразования и целевая сторона пары
+      steps:
+        - До фикса закрепить baseline преобразования и failing case отсутствующего целевого направления.
+        - Возвращать текст и optional направление, сохранив существующую пунктуацию.
+        - Отслеживать направление преобразованного символа; не определять язык по UI или большинству.
+        - Сопоставить направление с ID той же пары; отсутствие связи оставляет цель неопределённой.
+    public_test_surface: Результат конвертации текста с переданными картами и идентичностями сторон
+    verification:
+      acceptance_criteria: Точный текст и optional цель соответствуют AC04–09/12/14/18.
+      tests: Swift regression tests для fallback, смешанных строк, пунктуации, цифр и другой пары.
+      qa: Проверка public поведения и сохранения прежнего преобразования.
+      reviewer: Независимая проверка ID ориентации и отсутствия угадывания.
+    risks: Выделение тестируемой поверхности не должно дублировать production алгоритм.
+    rollback: Отменить только выделение логики и новые результаты этой фазы; настройки не мигрировать.
+    evidence: [p1-implementation.md, tdd-evidence.md, evidence/p1-green.txt, evidence/p1-final-sha256.txt]
+    coverage_matrix:
+      - {surface: conversion, trigger: observable behavior, required_agent_or_evidence: TDD strategy/evidence and Swift tests, required_status: pass, handoff_artifact: tdd-strategy.md and tdd-evidence.md, owner: tdd-expert, status: pending}
+      - {surface: regression, trigger: changed conversion, required_agent_or_evidence: QA and independent reviewer, required_status: pass, handoff_artifact: qa-core.md and review.md, owner: team-lead, status: pending}
+  - phase_id: P2
+    title: Выполнять подтверждённые операции в текущем контексте
+    status: blocked
+    description: >-
+      Явный системный выбор на основе свежего состояния. Конвертация захватывает
+      исходный AX элемент и выделение, проверяет контекст перед изменениями,
+      заменяет текст адресно, подтверждает результат и только затем выбирает
+      источник P1. Неподдерживаемые поля и неподтверждённая замена дают отказ,
+      а не синтетическую вставку без доказательства.
+    source:
+      task_quote: 'После подтверждённой замены выделения явно выбирает этот источник.'
+    task_item_coverage: [AC01, AC02, AC03, AC04, AC05, AC10, AC11, AC12, AC13, AC14, AC15, AC16, AC17, AC18]
+    acceptance_cases: [AC01, AC02, AC03, AC04, AC05, AC10, AC11, AC12, AC13, AC14, AC15, AC16, AC17, AC18]
+    requires_tdd: true
+    dependencies: [] # Только проверенное ядро P1; native binding проверяется совместно в P3.
+    agent:
+      implementation_scope:
+        - Sources/LangConvert/main.swift — KeyboardAutomation, KeyboardLayoutProvider, AppDelegate, AppText
+        - Sources/LangConvertCore/InputOperations.swift — production coordinator команд с внешним InputEnvironment
+        - Sources/LangConvert/MacInputEnvironment.swift — TIS/AX адаптер
+        - Tests/LangConvertCoreTests/InputOperationAcceptanceTests.swift — исполнимые внешние сценарии среды
+      steps:
+        - До изменения поведения воспроизвести отсутствие выбора целевого источника после успешной замены через production coordinator с внешней тестовой средой.
+        - Начальная поверхность coordinator сохраняет прежнюю операцию замены без нового выбора; RED должен быть assertion по итоговому источнику, не compiler failure.
+        - Получать свежий TIS источник перед ручным выбором; вне пары возвращать объяснение.
+        - Выбирать конкретный доступный ID, проверять фактический источник, не посылать Control + Space.
+        - Захватывать PID, AX focused element, selection range и исходный текст; проверять отсутствие изменений.
+        - Выполнять адресную AX замену лишь при поддержке; подтверждать ожидаемый текст и контекст.
+        - Разделять отказ, неопределённый результат, частичный успех и полный успех.
+        - Ограничить время ожидания, сериализовать операции, отменять оставшуюся работу при смене фокуса.
+        - Coordinator работает на MainActor с async ограниченным ожиданием; внешний adapter предоставляет context token, read/replace/verify selection, current/select source и available IDs.
+        - Native adapter захватывает AX element/window/PID, проверяет range/value, пишет только selectedText и подтверждает ожидаемый value; неподдерживаемые поля завершаются без clipboard fallback.
+        - Не повторять системный выбор после внешней смены и не захватывать фокус обратно.
+    public_test_surface: Команды пользователя и наблюдаемые текст, источник, сообщения, отмена
+    verification:
+      acceptance_criteria: AC01–05/10–18 проходят без слепого toggle и действий в чужом окне.
+      tests: Swift tests внешних границ плюс реальные macOS TIS/AX проверки всех error/cancel путей.
+      qa: macOS два приложения и два окна, восстановление документа on/off, переназначенный shortcut.
+      reviewer: Независимая проверка гонок, ограничений AX, частичных результатов и неизменности scope.
+    risks: >-
+      AX различается между редакторами; отсутствие readback не доказывает отсутствие
+      замены. Не хранить и не логировать пользовательский текст. Linux не подтверждает API интеграцию.
+    rollback: Вернуть только эту фазу совместно с зависимыми вызовами; не менять системные настройки.
+    evidence: [p2-implementation.md, tdd-strategy-p2.md, tdd-evidence-p2.md, qa-core.md, review.md, security-review.md, evidence/p2-final.txt, evidence/p2-final-sha256.txt]
+    coverage_matrix:
+      - {surface: system-integration, trigger: TIS and AX behavior, required_agent_or_evidence: TDD strategy/evidence and macOS tests, required_status: pass, handoff_artifact: tdd-strategy.md and tdd-evidence.md, owner: tdd-expert, status: pending}
+      - {surface: focus-and-reliability, trigger: cancel and partial success, required_agent_or_evidence: QA and qa-reliability-reviewer, required_status: pass, handoff_artifact: qa-core.md, owner: team-lead, status: pending}
+      - {surface: text-privacy, trigger: accessibility user text, required_agent_or_evidence: security-feature-reviewer, required_status: pass, handoff_artifact: security-review.md, owner: team-lead, status: pending}
+      - {surface: local-review, trigger: implementation, required_agent_or_evidence: independent reviewer, required_status: pass, handoff_artifact: review.md, owner: team-lead, status: pending}
+  - phase_id: P3
+    title: Проверить продукт и обновить описание поведения
+    status: blocked
+    description: Проверить всю матрицу на macOS, уточнить README и собрать evidence без объявления непроверенных gates успешными.
+    source:
+      task_quote: 'В отчёте разделять автоматизированные проверки, ручные наблюдения и непроверенное.'
+    task_item_coverage: [AC01, AC02, AC03, AC04, AC05, AC06, AC07, AC08, AC09, AC10, AC11, AC12, AC13, AC14, AC15, AC16, AC17, AC18]
+    acceptance_cases: [AC01, AC02, AC03, AC04, AC05, AC06, AC07, AC08, AC09, AC10, AC11, AC12, AC13, AC14, AC15, AC16, AC17, AC18]
+    requires_tdd: false
+    tdd_not_applicable_reason: Только документация и итоговая проверка; поведение и RED принадлежат P1/P2, исключение подтверждает TDD expert.
+    dependencies: [P1, P2]
+    agent:
+      implementation_scope: [README.md, docs/tasks/system-layout-sync]
+      steps:
+        - Описать явный выбор пары, конвертацию с выбором языка и ограничение неподдерживаемых полей на EN/RU.
+        - Выполнить проектные проверки и полную macOS acceptance матрицу.
+        - Получить свежие независимые verdicts и финальный architect review.
+        - Сохранить handoff с точной revision, рисками и статусом дистрибутива.
+    public_test_surface: README и фактические acceptance результаты приложения
+    verification:
+      acceptance_criteria: Все AC подтверждены актуальными отчётами; ограничения не скрыты.
+      tests: python3 scripts/test-layout-converter.py; bash -n scripts/package-macos.sh; git diff --check; swift build; Swift tests; macOS smoke
+      qa: Полная продуктовая матрица, никакой подмены macOS Python-моделью.
+      reviewer: Соответствие утверждённой Task, README и реального поведения.
+    risks: Нет macOS evidence — нет final readiness; pkg не обновлять вручную в Linux.
+    rollback: Отменить документационные изменения задачи без чужих файлов.
+    evidence: [docs-request.md, docs-review.md, macos-validation.md, handoff.md]
+    coverage_matrix:
+      - {surface: docs, trigger: changed behavior description, required_agent_or_evidence: documentation review and knowledge check, required_status: pass, handoff_artifact: docs-review.md, owner: team-lead, status: pending}
+      - {surface: final-product, trigger: release readiness, required_agent_or_evidence: QA and independent reviewer and final architect, required_status: pass, handoff_artifact: handoff.md, owner: team-lead, status: pending}
+not_applicable:
+  - Browser/React/render QA отсутствуют — native AppKit без нового экрана.
+  - Analytics/AI/payments/external storage отсутствуют — нет таких изменений.
+  - Legal review не требуется — нет новой обработки, передачи или хранения данных.
+publication: Не выполняется без отдельного разрешения; CI и pkg не изменяются в этой работе.
+projection: not-supported — отдельного runtime projection tool нет; файл является проектным планом.
+final_readiness: blocked — macOS build/runtime evidence отсутствует

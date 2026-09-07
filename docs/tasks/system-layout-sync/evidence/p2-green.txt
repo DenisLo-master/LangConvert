@@ -1,0 +1,67 @@
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version-589446694DF107B7.txt
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[3/5] Compiling LangConvertCore InputOperations.swift
+[4/5] Emitting module LangConvertCore
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[5/13] Wrapping AST for LangConvertCore for debugging
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[7/15] Emitting module LangConvertCoreTests
+[8/15] Compiling LangConvertCoreTests InputOperationAcceptanceTests.swift
+<unknown>:0: warning: glibc not found for 'x86_64-unknown-linux-gnu'; C stdlib may be unavailable
+[9/11] Write Objects.LinkFileList
+warning: Could not read SDKSettings.json for SDK at: /tmp/langconvert-swift/sysroot
+[10/11] Linking LangConvertPackageTests.xctest
+Build complete! (2.16s)
+Test Suite 'All tests' started at 2026-09-07 13:01:54.190
+Test Suite 'debug.xctest' started at 2026-09-07 13:01:54.193
+Test Suite 'ConversionAcceptanceTests' started at 2026-09-07 13:01:54.193
+Test Case 'ConversionAcceptanceTests.testDigitsAndUnchangedMappingsCannotSetDirection' started at 2026-09-07 13:01:54.193
+Test Case 'ConversionAcceptanceTests.testDigitsAndUnchangedMappingsCannotSetDirection' passed (0.001 seconds)
+Test Case 'ConversionAcceptanceTests.testExistingTextConversion' started at 2026-09-07 13:01:54.194
+Test Case 'ConversionAcceptanceTests.testExistingTextConversion' passed (0.001 seconds)
+Test Case 'ConversionAcceptanceTests.testLastDirectionWinsOverMajority' started at 2026-09-07 13:01:54.195
+Test Case 'ConversionAcceptanceTests.testLastDirectionWinsOverMajority' passed (0.001 seconds)
+Test Case 'ConversionAcceptanceTests.testNoTargetForUnresolvedTextOrSource' started at 2026-09-07 13:01:54.195
+Test Case 'ConversionAcceptanceTests.testNoTargetForUnresolvedTextOrSource' passed (0.001 seconds)
+Test Case 'ConversionAcceptanceTests.testOtherPairUsesExplicitIdentifiers' started at 2026-09-07 13:01:54.196
+Test Case 'ConversionAcceptanceTests.testOtherPairUsesExplicitIdentifiers' passed (0.0 seconds)
+Test Case 'ConversionAcceptanceTests.testTargetForBothDirections' started at 2026-09-07 13:01:54.196
+Test Case 'ConversionAcceptanceTests.testTargetForBothDirections' passed (0.0 seconds)
+Test Case 'ConversionAcceptanceTests.testTrailingNeutralCharactersDoNotChangeTarget' started at 2026-09-07 13:01:54.197
+Test Case 'ConversionAcceptanceTests.testTrailingNeutralCharactersDoNotChangeTarget' passed (0.001 seconds)
+Test Suite 'ConversionAcceptanceTests' passed at 2026-09-07 13:01:54.197
+Executed 7 tests, with 0 failures (0 unexpected) in 0.005 (0.005) seconds
+Test Suite 'InputOperationAcceptanceTests' started at 2026-09-07 13:01:54.197
+Test Case 'InputOperationAcceptanceTests.testAlreadyActiveAndNeutralTextDoNotToggle' started at 2026-09-07 13:01:54.197
+Test Case 'InputOperationAcceptanceTests.testAlreadyActiveAndNeutralTextDoNotToggle' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testBaselineReplacement' started at 2026-09-07 13:01:54.198
+Test Case 'InputOperationAcceptanceTests.testBaselineReplacement' passed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed' started at 2026-09-07 13:01:54.199
+Test Case 'InputOperationAcceptanceTests.testConcurrentActionRejectedAndLaterActionAllowed' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testConvertsAndSelectsResultSource' started at 2026-09-07 13:01:54.199
+Test Case 'InputOperationAcceptanceTests.testConvertsAndSelectsResultSource' passed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testFailureAndNoSelectionNeverSwitch' started at 2026-09-07 13:01:54.200
+Test Case 'InputOperationAcceptanceTests.testFailureAndNoSelectionNeverSwitch' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testFocusLossAfterConfirmedReplacementIsPartial' started at 2026-09-07 13:01:54.200
+Test Case 'InputOperationAcceptanceTests.testFocusLossAfterConfirmedReplacementIsPartial' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testFocusLossBeforeReplacementCancels' started at 2026-09-07 13:01:54.201
+Test Case 'InputOperationAcceptanceTests.testFocusLossBeforeReplacementCancels' passed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime' started at 2026-09-07 13:01:54.202
+Test Case 'InputOperationAcceptanceTests.testManualReadsCurrentSystemSourceEveryTime' passed (0.001 seconds)
+Test Case 'InputOperationAcceptanceTests.testOutsidePairAndIncompletePairDoNotGuess' started at 2026-09-07 13:01:54.202
+Test Case 'InputOperationAcceptanceTests.testOutsidePairAndIncompletePairDoNotGuess' passed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testSelectRequestIsNotConfirmationAndIsNotRetried' started at 2026-09-07 13:01:54.203
+Test Case 'InputOperationAcceptanceTests.testSelectRequestIsNotConfirmationAndIsNotRetried' passed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testSourceFailureAfterReplacementIsPartial' started at 2026-09-07 13:01:54.203
+Test Case 'InputOperationAcceptanceTests.testSourceFailureAfterReplacementIsPartial' passed (0.0 seconds)
+Test Case 'InputOperationAcceptanceTests.testUnconfirmedReplacementNeverSwitches' started at 2026-09-07 13:01:54.203
+Test Case 'InputOperationAcceptanceTests.testUnconfirmedReplacementNeverSwitches' passed (0.0 seconds)
+Test Suite 'InputOperationAcceptanceTests' passed at 2026-09-07 13:01:54.204
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'debug.xctest' passed at 2026-09-07 13:01:54.204
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.011 (0.011) seconds
+Test Suite 'All tests' passed at 2026-09-07 13:01:54.204
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.011 (0.011) seconds
